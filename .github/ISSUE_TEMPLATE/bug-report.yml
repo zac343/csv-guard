@@ -1,0 +1,57 @@
+name: Bug report
+description: Report a reproducible problem using only synthetic or redacted data.
+title: "[Bug] "
+labels: []
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve CSV Guard. This is a public issue. Never paste private rows, attach a sensitive CSV, or include credentials, personal data, customer data, or proprietary data. Create the smallest synthetic example that reproduces the problem.
+  - type: input
+    id: browser
+    attributes:
+      label: Browser and version
+      placeholder: Firefox 128, Chrome 126, Safari 18…
+    validations:
+      required: true
+  - type: dropdown
+    id: input_method
+    attributes:
+      label: Input method
+      options:
+        - File picker
+        - Drag and drop
+        - Pasted text
+        - Risky sample
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Use a minimal synthetic or fully redacted example.
+      placeholder: |
+        1. Open CSV Guard
+        2. Paste this synthetic CSV: name,note\nAda,example
+        3. Select Inspect CSV
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+    validations:
+      required: true
+  - type: checkboxes
+    id: privacy
+    attributes:
+      label: Privacy confirmation
+      options:
+        - label: I have not included or attached private, personal, customer, credential, or proprietary data.
+          required: true

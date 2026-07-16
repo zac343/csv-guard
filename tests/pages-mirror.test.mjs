@@ -6,7 +6,7 @@ import { createLatestOperation } from "../docs-src/latest-operation.ts";
 const root = new URL("../", import.meta.url);
 
 test("ships a crawlable, no-telemetry GitHub Pages application", async () => {
-  const [html, source, bundle, robots, sitemap, rootLlms, publicLlms] = await Promise.all([
+  const [html, source, bundle, robots, sitemap, rootLlms, publicLlms, bugForm, security] = await Promise.all([
     readFile(new URL("docs/index.html", root), "utf8"),
     readFile(new URL("docs-src/app.ts", root), "utf8"),
     readFile(new URL("docs/app.js", root), "utf8"),
@@ -14,6 +14,8 @@ test("ships a crawlable, no-telemetry GitHub Pages application", async () => {
     readFile(new URL("docs/sitemap.xml", root), "utf8"),
     readFile(new URL("llms.txt", root), "utf8"),
     readFile(new URL("docs/llms.txt", root), "utf8"),
+    readFile(new URL(".github/ISSUE_TEMPLATE/bug-report.yml", root), "utf8"),
+    readFile(new URL("SECURITY.md", root), "utf8"),
   ]);
 
   assert.match(html, /<link rel="canonical" href="https:\/\/zac343\.github\.io\/csv-guard\/"/);
@@ -25,6 +27,8 @@ test("ships a crawlable, no-telemetry GitHub Pages application", async () => {
   assert.match(html, /href="\.\/llms\.txt"/);
   assert.match(html, /No telemetry/);
   assert.match(html, /no analytics endpoint/i);
+  assert.match(html, /issues\/new\/choose/);
+  assert.match(html, /Never attach a private CSV/);
   assert.doesNotMatch(`${html}${source}${bundle}`, /google-analytics|googletagmanager|segment\.com|mixpanel|posthog/i);
   assert.doesNotMatch(source, /\bfetch\s*\(|XMLHttpRequest|sendBeacon|WebSocket|EventSource/);
   assert.match(source, /from "\.\.\/app\/lib\/csv\.ts"/);
@@ -36,6 +40,9 @@ test("ships a crawlable, no-telemetry GitHub Pages application", async () => {
   assert.match(rootLlms, /^# CSV Guard\n\n> /);
   assert.match(rootLlms, /## Product/);
   assert.match(rootLlms, /## Technical reference/);
+  assert.match(bugForm, /Never paste private rows/);
+  assert.match(bugForm, /Privacy confirmation/);
+  assert.match(security, /private vulnerability-reporting form/);
 });
 
 test("includes every local asset and the public IndexNow ownership file", async () => {

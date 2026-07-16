@@ -8,6 +8,7 @@ CSV Guard supports comma, semicolon, tab, pipe, and single-column input. The pub
 
 - [Use CSV Guard](https://zac343.github.io/csv-guard/): Public static application; processing and export run inside the browser tab.
 - [Project README](https://github.com/zac343/csv-guard/blob/main/README.md): Capabilities, browser limits, privacy model, local development, and verification.
+- [Support forms](https://github.com/zac343/csv-guard/issues/new/choose): Public bug and feature intake; users must provide only synthetic or redacted examples and never attach a private CSV.
 
 ## Technical reference
 
@@ -19,3 +20,4 @@ CSV Guard supports comma, semicolon, tab, pipe, and single-column input. The pub
 
 - [Source repository](https://github.com/zac343/csv-guard): Viewable source and release history. No software license is currently granted by the repository.
 - [Hosted metrics route](https://github.com/zac343/csv-guard/blob/main/app/api/events/route.ts): Aggregate-only telemetry implementation used by the separate dynamic edition, not by the static application linked above.
+- [Security policy](https://github.com/zac343/csv-guard/blob/main/SECURITY.md): Private vulnerability-reporting instructions and supported-version policy.

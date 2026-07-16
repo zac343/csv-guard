@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { CsvWorkbench } from "./components/CsvWorkbench";
-import { SITE_URL, SOURCE_URL } from "./lib/site";
+import { SITE_URL, SOURCE_URL, SUPPORT_URL } from "./lib/site";
 
 export const metadata: Metadata = {
   title: "Clean risky CSVs locally",
@@ -187,7 +187,9 @@ export default function Home() {
         </a>
         <p>Private CSV hygiene for careful teams.</p>
         <p>
-          <a href={SOURCE_URL} target="_blank" rel="noreferrer">View source on GitHub ↗</a>
+          <a href={SOURCE_URL} target="_blank" rel="noreferrer">View source ↗</a>
+          {" · "}
+          <a href={SUPPORT_URL} target="_blank" rel="noreferrer">Report an issue ↗</a>
         </p>
       </footer>
     </main>

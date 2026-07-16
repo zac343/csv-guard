@@ -29,6 +29,10 @@ npm run dev
 npm test
 ```
 
+## Support
+
+Use the [structured issue forms](https://github.com/zac343/csv-guard/issues/new/choose) for bugs and feature requests. Describe problems with synthetic or redacted examples only—never attach a private CSV or paste sensitive rows into a public issue. Security vulnerabilities should use GitHub's private vulnerability-reporting form described in [SECURITY.md](SECURITY.md).
+
 ## Deployment
 
 The no-telemetry static edition is bundled into `docs/` for GitHub Pages with `npm run build:pages`. The project also targets the Sites/vinext Cloudflare Worker runtime. D1 migrations create the aggregate product-metrics table for that separate edition; the CSV itself remains in the browser. Reading aggregate metrics requires a server-side `METRICS_READ_TOKEN` secret.

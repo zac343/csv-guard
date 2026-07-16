@@ -21,7 +21,8 @@ test("ships CSV Guard content and removes the disposable starter", async () => {
   assert.match(layout, /metadataBase: new URL\(SITE_URL\)/);
   assert.match(layout, /canonical: SITE_URL/);
   assert.match(page, /SoftwareApplication/);
-  assert.match(page, /View source on GitHub/);
+  assert.match(page, /View source/);
+  assert.match(page, /Report an issue/);
   assert.match(robots, /sitemap/);
   assert.match(sitemap, /changeFrequency: "weekly"/);
   assert.match(site, /zac343\.github\.io\/csv-guard\//);

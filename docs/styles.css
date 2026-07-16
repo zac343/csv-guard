@@ -565,6 +565,19 @@ td.empty-cell {
   margin: 0.65rem 0 0;
 }
 
+.result-feedback {
+  color: #c4cac6;
+  font-size: 0.75rem;
+  line-height: 1.6;
+  margin: 1rem 0 0;
+}
+
+.result-feedback a {
+  color: var(--mint);
+  font-weight: 750;
+  text-underline-offset: 0.25em;
+}
+
 .checks-section,
 .limits-section,
 .privacy-section,
@@ -815,7 +828,9 @@ footer {
   margin: 0;
 }
 
-.footer-inner .source-link {
+.footer-links {
+  display: flex;
+  gap: 1.2rem;
   justify-self: end;
 }
 
@@ -968,7 +983,8 @@ footer {
     padding: 2.5rem 0;
   }
 
-  .footer-inner .source-link {
+  .footer-links {
+    flex-direction: column;
     justify-self: start;
   }
 }
