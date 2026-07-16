@@ -13,9 +13,11 @@ import {
   CSV_LIMITS,
   cleanCsv,
   parseCsv,
-  serializeCsv,
+  serializeCleanCsv,
   type CleanResult,
+  type FormulaProtectionMode,
 } from "../lib/csv";
+import { createLatestOperation } from "../lib/latest-operation";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const SAMPLE_CSV = ` Customer Name ,Email,Invoice note
@@ -42,12 +44,16 @@ async function trackEvent(event: EventName, signal?: AbortSignal) {
 
 export function CsvWorkbench() {
   const fileInputId = useId();
+  const formulaModeNoteId = `${fileInputId}-formula-mode-note`;
   const [source, setSource] = useState("");
   const [fileName, setFileName] = useState("untitled.csv");
   const [result, setResult] = useState<CleanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [formulaProtectionMode, setFormulaProtectionMode] =
+    useState<FormulaProtectionMode>("portable-apostrophe");
+  const [operations] = useState(createLatestOperation);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -55,51 +61,72 @@ export function CsvWorkbench() {
     return () => controller.abort();
   }, []);
 
-  const processText = useCallback(async (text: string, nextFileName: string) => {
+  const processText = useCallback(async (
+    text: string,
+    nextFileName: string,
+    operation = operations.begin(),
+  ) => {
+    if (!operations.isCurrent(operation)) return;
     if (new Blob([text]).size > MAX_FILE_BYTES) {
       setError("This CSV is larger than the 10 MB browser limit.");
       setResult(null);
+      setIsProcessing(false);
       return;
     }
 
     setIsProcessing(true);
     await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    if (!operations.isCurrent(operation)) return;
     try {
       const parsed = parseCsv(text);
-      const cleaned = cleanCsv(parsed);
-      setSource(text);
-      setFileName(nextFileName);
-      setResult(cleaned);
-      setError(null);
-      void trackEvent("analyze");
+      const cleaned = cleanCsv(parsed, formulaProtectionMode);
+      if (operations.isCurrent(operation)) {
+        setSource(text);
+        setFileName(nextFileName);
+        setResult(cleaned);
+        setError(null);
+        void trackEvent("analyze");
+      }
     } catch (reason) {
-      setResult(null);
-      setError(reason instanceof Error ? reason.message : "Unable to parse this CSV.");
+      if (operations.isCurrent(operation)) {
+        setResult(null);
+        setError(reason instanceof Error ? reason.message : "Unable to parse this CSV.");
+      }
     } finally {
-      setIsProcessing(false);
+      if (operations.isCurrent(operation)) setIsProcessing(false);
     }
-  }, []);
+  }, [formulaProtectionMode, operations]);
 
   const readFile = useCallback(async (file: File) => {
+    const operation = operations.begin();
+    setIsProcessing(true);
+    setError(null);
+    setResult(null);
+
     if (file.size > MAX_FILE_BYTES) {
       setError("This file is larger than the 10 MB browser limit.");
-      setResult(null);
+      setIsProcessing(false);
       return;
     }
 
     if (!file.name.toLowerCase().endsWith(".csv") && file.type !== "text/csv") {
       setError("Choose a .csv file or paste CSV text below.");
-      setResult(null);
+      setIsProcessing(false);
       return;
     }
 
     try {
-      await processText(await file.text(), file.name);
+      const text = await file.text();
+      if (!operations.isCurrent(operation)) return;
+      await processText(text, file.name, operation);
     } catch {
-      setError("The browser could not read this file.");
-      setResult(null);
+      if (operations.isCurrent(operation)) {
+        setError("The browser could not read this file.");
+        setResult(null);
+        setIsProcessing(false);
+      }
     }
-  }, [processText]);
+  }, [operations, processText]);
 
   const handleFileChange = useCallback((event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -126,33 +153,46 @@ export function CsvWorkbench() {
   }, [readFile]);
 
   const handleSourceChange = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => {
+    operations.invalidate();
+    setIsProcessing(false);
     setSource(event.target.value);
     setResult(null);
     setError(null);
-  }, []);
+  }, [operations]);
 
   const handleAnalyze = useCallback(() => {
     void processText(source, fileName);
   }, [fileName, processText, source]);
 
   const handleLoadSample = useCallback(() => {
+    operations.invalidate();
+    setIsProcessing(false);
     setSource(SAMPLE_CSV);
     setFileName("sample-customers.csv");
     setResult(null);
     setError(null);
     void trackEvent("sample_loaded");
-  }, []);
+  }, [operations]);
+
+  const handleFormulaModeChange = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
+    operations.invalidate();
+    setIsProcessing(false);
+    setFormulaProtectionMode(event.target.value as FormulaProtectionMode);
+    setResult(null);
+    setError(null);
+  }, [operations]);
 
   const handleDownload = useCallback(() => {
     if (!result) return;
-    const blob = new Blob([serializeCsv(result.table)], {
+    const blob = new Blob([serializeCleanCsv(result)], {
       type: "text/csv;charset=utf-8",
     });
     const url = URL.createObjectURL(blob);
     const anchor = document.createElement("a");
     const baseName = fileName.replace(/\.csv$/i, "") || "cleaned";
     anchor.href = url;
-    anchor.download = `${baseName}.guarded.csv`;
+    const suffix = result.formulaProtectionMode === "excel-tab" ? "tab-prefixed" : "apostrophe-prefixed";
+    anchor.download = `${baseName}.${suffix}.csv`;
     document.body.appendChild(anchor);
     anchor.click();
     anchor.remove();
@@ -171,9 +211,16 @@ export function CsvWorkbench() {
   const headerCells = previewHeaders.map((header) => <th key={header}>{header}</th>);
   const rowCells = previewRows.map((row, rowIndex) => {
     const stableKey = row.join("\u001f");
-    const cells = row.map((cell, columnIndex) => (
-      <td key={`${previewHeaders[columnIndex] ?? "column"}-${columnIndex}`}>{cell || "—"}</td>
-    ));
+    const cells = row.map((cell, columnIndex) => {
+      const visibleCell = result?.formulaProtectionMode === "excel-tab"
+        ? cell.replaceAll("\t", "⇥")
+        : cell;
+      return (
+        <td key={`${previewHeaders[columnIndex] ?? "column"}-${columnIndex}`}>
+          {visibleCell || "—"}
+        </td>
+      );
+    });
     return <tr key={`${rowIndex}-${stableKey}`}>{cells}</tr>;
   });
 
@@ -227,6 +274,25 @@ export function CsvWorkbench() {
         spellCheck={false}
       />
 
+      <div className="formula-mode-control">
+        <label htmlFor={`${fileInputId}-formula-mode`}>Formula handling</label>
+        <select
+          id={`${fileInputId}-formula-mode`}
+          value={formulaProtectionMode}
+          onChange={handleFormulaModeChange}
+          disabled={isProcessing}
+          aria-describedby={formulaModeNoteId}
+        >
+          <option value="portable-apostrophe">Apostrophe prefix (default)</option>
+          <option value="excel-tab">Excel review prefix (tab)</option>
+        </select>
+        <p id={formulaModeNoteId}>
+          {formulaProtectionMode === "excel-tab"
+            ? "Adds a real tab before risky markers. The tab stays in exported data and can disrupt downstream imports. This may better survive Excel save/reopen. Negative numbers are also prefixed."
+            : "Adds an apostrophe before risky markers. The apostrophe stays in exported data, so downstream tools must accept or strip it. Excel may remove its escape behavior after save/reopen. Negative numbers are also prefixed."}
+        </p>
+      </div>
+
       <div className="action-row">
         <button
           type="button"
@@ -247,13 +313,18 @@ export function CsvWorkbench() {
             <div>
               <p className="panel-kicker">Cleanup ready</p>
               <h3>{result.stats.outputRows.toLocaleString()} cleaned rows</h3>
+              <p className="result-mode">
+                {result.formulaProtectionMode === "excel-tab"
+                  ? "Tab-prefixed export"
+                  : "Apostrophe-prefixed export"}
+              </p>
             </div>
             <button type="button" className="download-button" onClick={handleDownload}>
               Download cleaned CSV
             </button>
           </div>
           <dl className="stats-grid">
-            <div><dt>Formulas protected</dt><dd>{result.stats.formulasProtected}</dd></div>
+            <div><dt>Formula-like segments changed</dt><dd>{result.stats.riskyPrefixesPrefixed}</dd></div>
             <div><dt>Duplicates removed</dt><dd>{result.stats.duplicatesRemoved}</dd></div>
             <div><dt>Empty rows removed</dt><dd>{result.stats.emptyRowsRemoved}</dd></div>
             <div><dt>Cells trimmed</dt><dd>{result.stats.cellsTrimmed}</dd></div>
@@ -268,7 +339,10 @@ export function CsvWorkbench() {
           <p className="preview-note">
             Previewing {Math.min(result.table.rows.length, 5)}/{result.table.rows.length} rows and{" "}
             {Math.min(result.table.headers.length, 6)}/{result.table.headers.length} columns. Detected{" "}
-            {result.inputDelimiterLabel} input.
+            {result.inputDelimiterLabel} input.{" "}
+            {result.formulaProtectionMode === "excel-tab"
+              ? "Tab-prefix mode; tabs display as ⇥ in this preview."
+              : "Apostrophe-prefix mode."}
           </p>
         </div>
       ) : null}

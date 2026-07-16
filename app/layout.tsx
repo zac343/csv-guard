@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     template: "%s · CSV Guard",
   },
   description:
-    "Clean risky CSV files locally: neutralize formula injection, remove duplicates and empty rows, normalize headers, and trim whitespace.",
+    "Clean risky CSV files locally: prefix formula-like segments, remove duplicates and empty rows, normalize headers, and trim whitespace.",
   applicationName: "CSV Guard",
   alternates: {
     canonical: SITE_URL,

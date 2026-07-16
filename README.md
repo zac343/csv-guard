@@ -1,16 +1,23 @@
 # CSV Guard
 
-CSV Guard is a privacy-first CSV hygiene tool. It parses and cleans files in the browser, then downloads a guarded copy without uploading row data.
+CSV Guard is a privacy-first CSV hygiene tool. It parses and cleans files in the browser, then downloads a separately prefixed copy without uploading row data.
 
 **[Use CSV Guard in your browser](https://zac343.github.io/csv-guard/)**
 
 Current checks:
 
-- neutralize `=`, `+`, `-`, and `@` markers at cell starts and supported delimiter or newline boundaries;
+- detect and prefix `=`, `+`, `-`, and `@` markers at cell starts and supported delimiter or newline boundaries;
 - remove duplicate and empty rows;
 - normalize and de-conflict headers;
 - trim leading and trailing cell whitespace;
 - auto-detect comma, semicolon, tab, and pipe delimiters.
+
+Formula handling is destination-specific:
+
+- **Apostrophe prefix (default)** adds an apostrophe that stays in exported data; downstream tools must accept or strip it. Excel may remove its formula-escape behavior after a save/reopen cycle.
+- **Excel review prefix (tab)** adds a real tab before risky markers. It may better survive that Excel cycle, but the tab remains in the data and can disrupt programmatic imports.
+
+No universal CSV prefix strategy works across every spreadsheet and downstream consumer. Both modes also prefix negative numbers such as `-42`, changing their inferred type. These modes reduce formula-execution risk on initial import; they do not make an untrusted CSV permanently safe. Re-run the cleaner before reopening untrusted exports, and review the [OWASP CSV Injection guidance](https://owasp.org/www-community/attacks/CSV_Injection) for the lifecycle trade-offs.
 
 Files are limited to 10 MB, 100,000 data rows, 5,000 columns, 500,000 normalized cells, and 2,000,000 characters per field to bound parser work. Large inputs can still be memory-intensive, especially on mobile devices.
 

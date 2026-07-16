@@ -13,7 +13,7 @@
     <title>CSV Guard — Clean risky CSVs locally</title>
     <meta
       name="description"
-      content="Remove formula injection, duplicate and empty rows, messy headers, and stray whitespace without uploading your CSV. Free, browser-only, with source available."
+      content="Prefix formula-like CSV segments, remove duplicate and empty rows, normalize headers, and trim whitespace without uploading your file. Free and browser-only."
     />
     <meta name="robots" content="index,follow,max-image-preview:large" />
     <link rel="canonical" href="https://zac343.github.io/csv-guard/" />
@@ -31,7 +31,7 @@
     <meta name="twitter:title" content="CSV Guard — Clean risky CSVs locally" />
     <meta
       name="twitter:description"
-      content="Protect spreadsheet-bound CSVs without uploading them."
+      content="Reduce spreadsheet formula risk without uploading CSV contents."
     />
     <link rel="stylesheet" href="./styles.css" />
     <script type="module" src="./app.js"></script>
@@ -63,7 +63,7 @@
             <p class="eyebrow"><span></span>CSV hygiene, before production</p>
             <h1 id="hero-title">Clean risky CSVs.<br /><em>Keep the rows private.</em></h1>
             <p class="hero-lede">
-              Catch spreadsheet formula injection, duplicate records, empty rows,
+              Detect formula-like prefixes, duplicate records, empty rows,
               messy headers, and stray whitespace in one deterministic pass.
             </p>
             <p class="hero-cn" lang="zh-CN">
@@ -103,6 +103,19 @@
               placeholder="name,email,company&#10;Ada,ada@example.com,Analytical Engines"
             ></textarea>
 
+            <div class="formula-mode-control">
+              <label for="formula-mode">Formula handling</label>
+              <select id="formula-mode" aria-describedby="formula-mode-note">
+                <option value="portable-apostrophe">Apostrophe prefix (default)</option>
+                <option value="excel-tab">Excel review prefix (tab)</option>
+              </select>
+              <p id="formula-mode-note">
+                Adds an apostrophe before risky markers. The apostrophe stays in data,
+                so downstream tools must accept or strip it. Excel may remove its escape
+                behavior after save/reopen. Negative numbers are also prefixed.
+              </p>
+            </div>
+
             <div class="action-row">
               <button class="primary-button" id="analyze-csv" type="button" disabled>Inspect CSV</button>
               <p id="workbench-status" role="status" aria-live="polite">Waiting for a CSV.</p>
@@ -114,6 +127,7 @@
                 <div>
                   <p class="panel-kicker">Cleanup ready</p>
                   <h3 id="output-heading">0 cleaned rows</h3>
+                  <p class="result-mode" id="result-mode">Apostrophe-prefixed export</p>
                 </div>
                 <button class="download-button" id="download-csv" type="button" disabled>
                   Download cleaned CSV
@@ -121,7 +135,7 @@
               </div>
 
               <dl class="stats-grid">
-                <div><dt>Formulas protected</dt><dd data-stat="formulas">0</dd></div>
+                <div><dt>Formula-like segments changed</dt><dd data-stat="formulas">0</dd></div>
                 <div><dt>Duplicates removed</dt><dd data-stat="duplicates">0</dd></div>
                 <div><dt>Empty rows removed</dt><dd data-stat="empty">0</dd></div>
                 <div><dt>Cells trimmed</dt><dd data-stat="trimmed">0</dd></div>
@@ -156,7 +170,7 @@
           </p>
         </div>
         <div class="check-grid">
-          <article><span>01</span><h3>Formula injection</h3><p>Prefixes spreadsheet control markers with an apostrophe so imported cells stay text.</p></article>
+          <article><span>01</span><h3>Formula-like prefixes</h3><p>Prefixes risky markers with your selected escape to reduce execution risk on initial spreadsheet import.</p></article>
           <article><span>02</span><h3>Duplicate rows</h3><p>Removes byte-equivalent records after leading and trailing whitespace cleanup.</p></article>
           <article><span>03</span><h3>Empty records</h3><p>Drops rows with no meaningful value across every detected column.</p></article>
           <article><span>04</span><h3>Messy headers</h3><p>Normalizes field names and resolves collisions without discarding columns.</p></article>
@@ -171,18 +185,33 @@
           <p>
             If a cell’s first effective character is <code>=</code>, <code>+</code>,
             <code>-</code>, or <code>@</code>, spreadsheet software may interpret it as
-            a formula. CSV Guard adds a leading apostrophe to every such segment,
-            including one exposed after a comma, semicolon, tab, or pipe.
+            a formula. CSV Guard prefixes every such segment—including one exposed
+            after a comma, semicolon, tab, or pipe—with the mode you select.
           </p>
           <p class="risk-note">
-            This is deliberately conservative: negative numbers are exported as text.
-            Review typed columns after import if numeric inference matters to your workflow.
+            No universal CSV prefix strategy works across every spreadsheet and downstream
+            consumer. Excel can remove apostrophe-based escaping after you save and reopen a
+            file; the tab mode leaves a real tab in the data. Re-clean untrusted exports before
+            reopening them. Both modes also prefix negative numbers such as <code>-42</code>,
+            changing their inferred type. See the
+            <a href="https://owasp.org/www-community/attacks/CSV_Injection" target="_blank" rel="noreferrer">OWASP CSV Injection guidance</a>.
           </p>
+          <div class="mode-comparison" aria-labelledby="mode-comparison-title">
+            <h3 id="mode-comparison-title">Choose by destination</h3>
+            <table>
+              <caption class="visually-hidden">Formula prefix mode trade-offs</caption>
+              <thead><tr><th scope="col">Mode</th><th scope="col">Best fit</th><th scope="col">Known trade-off</th></tr></thead>
+              <tbody>
+                <tr><td>Apostrophe prefix</td><td>Downstream accepts or strips apostrophe</td><td>Apostrophe stays in data; escape may not survive Excel save/reopen</td></tr>
+                <tr><td>Excel review tab</td><td>One-time human review in Excel</td><td>Tab stays in data and may disrupt imports</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
-        <div class="formula-card" aria-label="Formula injection protection example">
+        <div class="formula-card" aria-label="Formula-like prefix example">
           <div><span>Risky input</span><code>=HYPERLINK("https://example.test")</code></div>
           <div class="formula-arrow" aria-hidden="true">↓</div>
-          <div><span>Guarded output</span><code>'=HYPERLINK("https://example.test")</code></div>
+          <div><span>Apostrophe-prefixed output</span><code>'=HYPERLINK("https://example.test")</code></div>
         </div>
       </section>
 
@@ -236,7 +265,7 @@
           </details>
           <details>
             <summary>Will it change my original file?</summary>
-            <p>No. Your original remains untouched. CSV Guard downloads a separate <code>.guarded.csv</code> copy.</p>
+            <p>No. Your original remains untouched. CSV Guard downloads a separate <code>.apostrophe-prefixed.csv</code> or <code>.tab-prefixed.csv</code> copy.</p>
           </details>
           <details>
             <summary>Is this a business-rule validation platform?</summary>

@@ -1,10 +1,11 @@
 import {
   cleanCsv,
   parseCsv,
-  serializeCsv,
+  serializeCleanCsv,
   type CleanResult,
+  type FormulaProtectionMode,
 } from "../app/lib/csv.ts";
-import { createLatestOperation } from "./latest-operation.ts";
+import { createLatestOperation } from "../app/lib/latest-operation.ts";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const PREVIEW_ROWS = 5;
@@ -27,12 +28,15 @@ const fileInput = requireElement<HTMLInputElement>("#csv-file");
 const dropZone = requireElement<HTMLLabelElement>("#drop-zone");
 const sourceInput = requireElement<HTMLTextAreaElement>("#csv-source");
 const sampleButton = requireElement<HTMLButtonElement>("#load-sample");
+const formulaModeSelect = requireElement<HTMLSelectElement>("#formula-mode");
+const formulaModeNote = requireElement<HTMLParagraphElement>("#formula-mode-note");
 const analyzeButton = requireElement<HTMLButtonElement>("#analyze-csv");
 const downloadButton = requireElement<HTMLButtonElement>("#download-csv");
 const resultsPanel = requireElement<HTMLElement>("#results");
 const errorMessage = requireElement<HTMLParagraphElement>("#error-message");
 const workbenchStatus = requireElement<HTMLParagraphElement>("#workbench-status");
 const outputHeading = requireElement<HTMLElement>("#output-heading");
+const resultMode = requireElement<HTMLElement>("#result-mode");
 const previewTable = requireElement<HTMLTableElement>("#preview-table");
 const previewNote = requireElement<HTMLParagraphElement>("#preview-note");
 
@@ -49,12 +53,23 @@ function setStatus(message: string) {
   workbenchStatus.textContent = message;
 }
 
+function selectedFormulaProtectionMode(): FormulaProtectionMode {
+  return formulaModeSelect.value === "excel-tab" ? "excel-tab" : "portable-apostrophe";
+}
+
+function updateFormulaModeNote() {
+  formulaModeNote.textContent = selectedFormulaProtectionMode() === "excel-tab"
+    ? "Adds a real tab before risky markers. The tab stays in exported data and can disrupt downstream imports. This may better survive Excel save/reopen. Negative numbers are also prefixed."
+    : "Adds an apostrophe before risky markers. The apostrophe stays in exported data, so downstream tools must accept or strip it. Excel may remove its escape behavior after save/reopen. Negative numbers are also prefixed.";
+}
+
 function setBusy(busy: boolean) {
   isProcessing = busy;
   analyzeButton.disabled = busy || !sourceInput.value.trim();
   fileInput.disabled = busy;
   sourceInput.disabled = busy;
   sampleButton.disabled = busy;
+  formulaModeSelect.disabled = busy;
   downloadButton.disabled = busy || !currentResult;
   dropZone.setAttribute("aria-busy", String(busy));
   dropZone.setAttribute("aria-disabled", String(busy));
@@ -105,7 +120,11 @@ function renderPreview(result: CleanResult) {
     for (let column = 0; column < headers.length; column += 1) {
       const cell = document.createElement("td");
       const value = row[column] ?? "";
-      cell.textContent = value || "—";
+      cell.textContent = (
+        result.formulaProtectionMode === "excel-tab"
+          ? value.replaceAll("\t", "⇥")
+          : value
+      ) || "—";
       if (!value) cell.className = "empty-cell";
       tableRow.append(cell);
     }
@@ -116,13 +135,19 @@ function renderPreview(result: CleanResult) {
   previewNote.textContent =
     `Previewing ${formatted(rows.length)}/${formatted(result.table.rows.length)} rows and ` +
     `${formatted(headers.length)}/${formatted(result.table.headers.length)} columns. ` +
-    `Detected ${result.inputDelimiterLabel} input.`;
+    `Detected ${result.inputDelimiterLabel} input. ` +
+    (result.formulaProtectionMode === "excel-tab"
+      ? "Tab-prefix mode; tabs display as ⇥ in this preview."
+      : "Apostrophe-prefix mode.");
 }
 
 function renderResult(result: CleanResult) {
   currentResult = result;
   outputHeading.textContent = `${formatted(result.stats.outputRows)} cleaned rows`;
-  setStat("formulas", result.stats.formulasProtected);
+  resultMode.textContent = result.formulaProtectionMode === "excel-tab"
+    ? "Tab-prefixed export"
+    : "Apostrophe-prefixed export";
+  setStat("formulas", result.stats.riskyPrefixesPrefixed);
   setStat("duplicates", result.stats.duplicatesRemoved);
   setStat("empty", result.stats.emptyRowsRemoved);
   setStat("trimmed", result.stats.cellsTrimmed);
@@ -147,6 +172,7 @@ async function processText(
   }
 
   currentFileName = fileName;
+  const formulaProtectionMode = selectedFormulaProtectionMode();
   setBusy(true);
   clearError();
   setStatus("Inspecting locally—no file content is being sent anywhere.");
@@ -156,7 +182,7 @@ async function processText(
   if (!operations.isCurrent(operation)) return;
 
   try {
-    const result = cleanCsv(parseCsv(text));
+    const result = cleanCsv(parseCsv(text), formulaProtectionMode);
     if (operations.isCurrent(operation)) renderResult(result);
   } catch (reason) {
     if (operations.isCurrent(operation)) {
@@ -243,20 +269,31 @@ sampleButton.addEventListener("click", () => {
   sourceInput.focus();
 });
 
+formulaModeSelect.addEventListener("change", () => {
+  operations.invalidate();
+  clearResult();
+  clearError();
+  updateFormulaModeNote();
+  setStatus(sourceInput.value.trim()
+    ? "Formula handling changed. Inspect the CSV again before downloading."
+    : "Waiting for a CSV.");
+});
+
 analyzeButton.addEventListener("click", () => {
   void processText(sourceInput.value, currentFileName);
 });
 
 downloadButton.addEventListener("click", () => {
   if (!currentResult) return;
-  const blob = new Blob([serializeCsv(currentResult.table)], {
+  const blob = new Blob([serializeCleanCsv(currentResult)], {
     type: "text/csv;charset=utf-8",
   });
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   const baseName = currentFileName.replace(/\.csv$/i, "").replace(/[\\/:*?"<>|]+/g, "-") || "cleaned";
   anchor.href = url;
-  anchor.download = `${baseName}.guarded.csv`;
+  const suffix = currentResult.formulaProtectionMode === "excel-tab" ? "tab-prefixed" : "apostrophe-prefixed";
+  anchor.download = `${baseName}.${suffix}.csv`;
   document.body.append(anchor);
   anchor.click();
   anchor.remove();
@@ -264,4 +301,5 @@ downloadButton.addEventListener("click", () => {
   setStatus("Cleaned CSV downloaded. No file content was uploaded.");
 });
 
+updateFormulaModeNote();
 setBusy(false);

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { access, readFile } from "node:fs/promises";
 import test from "node:test";
-import { createLatestOperation } from "../docs-src/latest-operation.ts";
+import { createLatestOperation } from "../app/lib/latest-operation.ts";
 
 const root = new URL("../", import.meta.url);
 
@@ -29,10 +29,28 @@ test("ships a crawlable, no-telemetry GitHub Pages application", async () => {
   assert.match(html, /no analytics endpoint/i);
   assert.match(html, /issues\/new\/choose/);
   assert.match(html, /Never attach a private CSV/);
+  assert.match(html, /id="formula-mode"/);
+  assert.match(html, /aria-describedby="formula-mode-note"/);
+  assert.match(html, /Apostrophe prefix \(default\)/);
+  assert.match(html, /Excel review prefix \(tab\)/);
+  assert.match(html, /save and reopen/i);
+  assert.match(html, /owasp\.org\/www-community\/attacks\/CSV_Injection/);
+  assert.match(html, /class="mode-comparison"/);
+  assert.match(html, /No universal CSV prefix strategy/i);
+  assert.match(html, /apostrophe stays in (?:the )?data/i);
+  assert.match(html, /negative numbers/i);
+  assert.doesNotMatch(html, /Programmatic reuse/i);
+  assert.match(html, /Formula-like segments changed/);
+  assert.match(source, /apostrophe-prefixed/);
+  assert.match(source, /tab-prefixed/);
+  assert.match(source, /replaceAll\("\\t", "⇥"\)/);
+  assert.doesNotMatch(`${html}${source}`, /\.guarded\.csv/);
+  assert.doesNotMatch(html, /Formulas protected|stay text|neutralize formula injection/i);
   assert.doesNotMatch(`${html}${source}${bundle}`, /google-analytics|googletagmanager|segment\.com|mixpanel|posthog/i);
   assert.doesNotMatch(source, /\bfetch\s*\(|XMLHttpRequest|sendBeacon|WebSocket|EventSource/);
   assert.match(source, /from "\.\.\/app\/lib\/csv\.ts"/);
-  assert.match(source, /serializeCsv\(currentResult\.table\)/);
+  assert.match(source, /formulaProtectionMode/);
+  assert.match(source, /serializeCleanCsv\(currentResult\)/);
   assert.ok(bundle.length > 1_000, "expected a non-empty bundled application");
   assert.match(robots, /Sitemap: https:\/\/zac343\.github\.io\/csv-guard\/sitemap\.xml/);
   assert.match(sitemap, /<loc>https:\/\/zac343\.github\.io\/csv-guard\/<\/loc>/);

@@ -4,10 +4,12 @@ export type CsvTable = {
   delimiter: string;
 };
 
+export type FormulaProtectionMode = "portable-apostrophe" | "excel-tab";
+
 export type CleanStats = {
   inputRows: number;
   outputRows: number;
-  formulasProtected: number;
+  riskyPrefixesPrefixed: number;
   duplicatesRemoved: number;
   emptyRowsRemoved: number;
   cellsTrimmed: number;
@@ -18,6 +20,7 @@ export type CleanResult = {
   table: CsvTable;
   stats: CleanStats;
   inputDelimiterLabel: string;
+  formulaProtectionMode: FormulaProtectionMode;
 };
 
 const DELIMITERS = [",", ";", "\t", "|"] as const;
@@ -213,10 +216,11 @@ function makeHeadersUnique(headers: string[]) {
   });
 }
 
-function looksExecutable(value: string) {
-  const probe = value
-    .normalize("NFKC")
-    .replace(/^["\p{White_Space}\p{Cc}\p{Cf}]+/u, "");
+function looksExecutable(value: string, formulaProtectionMode: FormulaProtectionMode) {
+  const leadingNoise = formulaProtectionMode === "excel-tab"
+    ? /^['"\p{White_Space}\p{Cc}\p{Cf}]+/u
+    : /^["\p{White_Space}\p{Cc}\p{Cf}]+/u;
+  const probe = value.normalize("NFKC").replace(leadingNoise, "");
   return /^[=+\-@]/u.test(probe);
 }
 
@@ -226,19 +230,36 @@ const EXECUTABLE_SEGMENT_BOUNDARIES = new Set<string>([
   "\n",
 ]);
 
-function protectExecutableSegments(value: string) {
+function alreadyHasExcelTabPrefix(value: string, segmentStart: number) {
+  if (segmentStart === 0 || value[segmentStart - 1] !== "\t") return false;
+  if (segmentStart === 1) return true;
+  return EXECUTABLE_SEGMENT_BOUNDARIES.has(value[segmentStart - 2]);
+}
+
+function protectExecutableSegments(
+  value: string,
+  formulaProtectionMode: FormulaProtectionMode,
+) {
   let output = "";
   let segmentStart = 0;
   let protectedSegments = 0;
+  const prefix = formulaProtectionMode === "excel-tab" ? "\t" : "'";
 
   for (let index = 0; index <= value.length; index += 1) {
     const atEnd = index === value.length;
     if (!atEnd && !EXECUTABLE_SEGMENT_BOUNDARIES.has(value[index])) continue;
 
     const segment = value.slice(segmentStart, index);
-    if (looksExecutable(segment)) {
-      output += `'${segment}`;
-      protectedSegments += 1;
+    if (looksExecutable(segment, formulaProtectionMode)) {
+      if (
+        formulaProtectionMode === "excel-tab" &&
+        alreadyHasExcelTabPrefix(value, segmentStart)
+      ) {
+        output += segment;
+      } else {
+        output += `${prefix}${segment}`;
+        protectedSegments += 1;
+      }
     } else {
       output += segment;
     }
@@ -250,7 +271,10 @@ function protectExecutableSegments(value: string) {
   return { value: output, protectedSegments };
 }
 
-export function cleanCsv(table: CsvTable): CleanResult {
+export function cleanCsv(
+  table: CsvTable,
+  formulaProtectionMode: FormulaProtectionMode = "portable-apostrophe",
+): CleanResult {
   const normalizedHeaders = makeHeadersUnique(
     table.headers.map((header, index) => normalizeHeader(header, index)),
   );
@@ -260,7 +284,7 @@ export function cleanCsv(table: CsvTable): CleanResult {
   });
 
   let cellsTrimmed = 0;
-  let formulasProtected = 0;
+  let riskyPrefixesPrefixed = 0;
   let emptyRowsRemoved = 0;
   let duplicatesRemoved = 0;
   const seenRows = new Set<string>();
@@ -286,8 +310,8 @@ export function cleanCsv(table: CsvTable): CleanResult {
     seenRows.add(fingerprint);
 
     const cleanedRow = trimmedRow.map((cell) => {
-      const protectedCell = protectExecutableSegments(cell);
-      formulasProtected += protectedCell.protectedSegments;
+      const protectedCell = protectExecutableSegments(cell, formulaProtectionMode);
+      riskyPrefixesPrefixed += protectedCell.protectedSegments;
       return protectedCell.value;
     });
     rows.push(cleanedRow);
@@ -298,13 +322,14 @@ export function cleanCsv(table: CsvTable): CleanResult {
     stats: {
       inputRows: table.rows.length,
       outputRows: rows.length,
-      formulasProtected,
+      riskyPrefixesPrefixed,
       duplicatesRemoved,
       emptyRowsRemoved,
       cellsTrimmed,
       headersNormalized,
     },
     inputDelimiterLabel: delimiterLabel(table.delimiter),
+    formulaProtectionMode,
   };
 }
 
@@ -312,12 +337,27 @@ function escapeCsvCell(cell: string) {
   return `"${cell.replaceAll('"', '""')}"`;
 }
 
-export function serializeCsv(table: CsvTable) {
+function serializeTable(table: CsvTable, formulaProtectionMode?: FormulaProtectionMode) {
   const delimiter = table.delimiter || ",";
   const lines = [table.headers, ...table.rows].map((row) =>
     row
-      .map((cell) => escapeCsvCell(protectExecutableSegments(cell).value))
+      .map((cell) => escapeCsvCell(
+        formulaProtectionMode
+          ? protectExecutableSegments(cell, formulaProtectionMode).value
+          : cell,
+      ))
       .join(delimiter),
   );
   return `\uFEFF${lines.join("\r\n")}\r\n`;
+}
+
+export function serializeCsv(
+  table: CsvTable,
+  formulaProtectionMode: FormulaProtectionMode = "portable-apostrophe",
+) {
+  return serializeTable(table, formulaProtectionMode);
+}
+
+export function serializeCleanCsv(result: CleanResult) {
+  return serializeTable(result.table);
 }

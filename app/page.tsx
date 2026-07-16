@@ -5,7 +5,7 @@ import { SITE_URL, SOURCE_URL, SUPPORT_URL } from "./lib/site";
 export const metadata: Metadata = {
   title: "Clean risky CSVs locally",
   description:
-    "Remove duplicates, empty rows, messy headers, stray whitespace, and spreadsheet formula injection without uploading your CSV.",
+    "Prefix formula-like CSV segments, remove duplicate and empty rows, normalize headers, and trim whitespace without uploading your file.",
 };
 
 const structuredData = {
@@ -24,7 +24,7 @@ const structuredData = {
     priceCurrency: "USD",
   },
   featureList: [
-    "Spreadsheet formula-injection protection",
+    "Configurable prefix handling for formula-like CSV segments",
     "Duplicate and empty row removal",
     "Header normalization",
     "Whitespace cleanup",
@@ -66,7 +66,7 @@ export default function Home() {
             before they spread.
           </h1>
           <p className="hero-lede">
-            Catch formula injection, duplicates, empty rows, messy headers, and
+            Detect formula-like prefixes, duplicates, empty rows, messy headers, and
             stray whitespace in one private, browser-only pass.
           </p>
           <p className="hero-cn" lang="zh-CN">
@@ -87,15 +87,15 @@ export default function Home() {
           <p className="eyebrow">Five deterministic checks</p>
           <h2 id="checks-title">Small CSV defects become expensive downstream.</h2>
           <p>
-            CSV Guard makes the safe, repeatable fixes and shows the exact count
+            CSV Guard makes conservative, repeatable fixes and shows the exact count
             for every change before you download.
           </p>
         </div>
         <div className="check-grid">
           <article>
             <span>01</span>
-            <h3>Formula injection</h3>
-            <p>Prefixes dangerous markers at cell starts and supported delimiter boundaries.</p>
+            <h3>Formula-like prefixes</h3>
+            <p>Prefixes risky markers with your selected escape to reduce execution risk on initial spreadsheet import.</p>
           </article>
           <article>
             <span>02</span>
@@ -117,6 +117,38 @@ export default function Home() {
             <h3>Stray whitespace</h3>
             <p>Trims invisible leading and trailing spaces that break matching.</p>
           </article>
+        </div>
+      </section>
+
+      <section className="guidance-section" aria-labelledby="guidance-title">
+        <div className="guidance-copy">
+          <p className="eyebrow">Choose by destination</p>
+          <h2 id="guidance-title">Two prefixes. Different trade-offs.</h2>
+          <p>
+            Cells beginning with =, +, -, or @ may be interpreted as formulas.
+            CSV Guard prefixes those markers at cell starts and supported delimiter
+            boundaries. No universal CSV prefix strategy works across every spreadsheet
+            and downstream consumer.
+          </p>
+          <p className="lifecycle-note">
+            Excel can remove apostrophe-based escaping after you save and reopen a file;
+            the tab mode leaves a real tab in the data. Re-clean untrusted exports before
+            reopening them. Both modes also prefix negative numbers such as -42, changing
+            their inferred type. See the{" "}
+            <a href="https://owasp.org/www-community/attacks/CSV_Injection" target="_blank" rel="noreferrer">
+              OWASP CSV Injection guidance
+            </a>.
+          </p>
+        </div>
+        <div className="mode-comparison">
+          <table>
+            <caption className="visually-hidden">Formula prefix mode trade-offs</caption>
+            <thead><tr><th scope="col">Mode</th><th scope="col">Best fit</th><th scope="col">Known trade-off</th></tr></thead>
+            <tbody>
+              <tr><td>Apostrophe prefix</td><td>Downstream accepts or strips apostrophe</td><td>Apostrophe stays in data; escape may not survive Excel save/reopen</td></tr>
+              <tr><td>Excel review tab</td><td>One-time human review in Excel</td><td>Tab stays in data and may disrupt imports</td></tr>
+            </tbody>
+          </table>
         </div>
       </section>
 
@@ -163,10 +195,11 @@ export default function Home() {
             <summary>What is spreadsheet formula injection?</summary>
             <p>
               Cells whose first effective character is =, +, -, or @ may be
-              interpreted as formulas when opened. CSV Guard prefixes every
-              such segment—including one exposed after a supported delimiter—with
-              an apostrophe. This conservative rule also converts negative numbers
-              to text.
+              interpreted as formulas when opened. CSV Guard prefixes every such
+              segment—including one exposed after a supported delimiter—using the
+              selected mode. This reduces risk on initial import but is not a
+              universal spreadsheet-safety guarantee. Negative numbers are also
+              exported as text.
             </p>
           </details>
           <details>

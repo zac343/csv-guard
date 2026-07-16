@@ -6,6 +6,7 @@ import {
   cleanCsv,
   detectDelimiter,
   parseCsv,
+  serializeCleanCsv,
   serializeCsv,
 } from "../app/lib/csv.ts";
 
@@ -34,7 +35,7 @@ test("cleans headers, duplicates, blanks, whitespace, and executable cells", () 
   ]);
   assert.equal(result.stats.duplicatesRemoved, 1);
   assert.equal(result.stats.emptyRowsRemoved, 1);
-  assert.equal(result.stats.formulasProtected, 2);
+  assert.equal(result.stats.riskyPrefixesPrefixed, 2);
   assert.ok(result.stats.cellsTrimmed >= 6);
 });
 
@@ -60,7 +61,7 @@ test("protects every executable marker after Unicode and control prefixes", () =
     rows: [...risky, ...safe].map((value) => [value]),
   });
 
-  assert.equal(result.stats.formulasProtected, risky.length);
+  assert.equal(result.stats.riskyPrefixesPrefixed, risky.length);
   assert.ok(result.table.rows.slice(0, risky.length).every(([value]) => value.startsWith("'")));
   assert.deepEqual(result.table.rows.slice(risky.length), safe.map((value) => [value]));
 });
@@ -74,12 +75,12 @@ test("protects formulas exposed by alternate-delimiter reinterpretation", () => 
     rows: [[value]],
   });
 
-  assert.equal(result.stats.formulasProtected, boundaries.length);
+  assert.equal(result.stats.riskyPrefixesPrefixed, boundaries.length);
   for (const boundary of boundaries) {
     assert.ok(result.table.rows[0][0].includes(`${boundary}'\u200B＝1+1`));
   }
 
-  const output = serializeCsv(result.table);
+  const output = serializeCleanCsv(result);
   for (const delimiter of [",", ";", "\t", "|"]) {
     const reinterpretedSegments = output.split(delimiter).slice(1);
     assert.ok(
@@ -93,10 +94,10 @@ test("survives quote-aware alternate-delimiter CSV reparsing", (context) => {
   const result = cleanCsv(parseCsv(
     'name,note\nAda,"safe;""=1+1;tail"',
   ));
-  assert.equal(result.stats.formulasProtected, 1);
+  assert.equal(result.stats.riskyPrefixesPrefixed, 1);
   assert.equal(result.table.rows[0][1], "safe;'\"=1+1;tail");
 
-  const output = serializeCsv(result.table);
+  const output = serializeCleanCsv(result);
   const python = spawnSync(
     "python3",
     [
@@ -135,13 +136,100 @@ test("survives quote-aware alternate-delimiter CSV reparsing", (context) => {
   }
 });
 
+test("offers explicit portable and Excel-review prefix modes without double-prefixing", () => {
+  const source = {
+    delimiter: ",",
+    headers: ["value", "note"],
+    rows: [
+      ["=2+2", "plain"],
+      ["safe;=3+3", "plain"],
+      ["\u200B＝4+4", "plain"],
+    ],
+  };
+
+  const portable = cleanCsv(source, "portable-apostrophe");
+  assert.equal(portable.formulaProtectionMode, "portable-apostrophe");
+  assert.deepEqual(portable.table.rows.map(([value]) => value), [
+    "'=2+2",
+    "safe;'=3+3",
+    "'\u200B＝4+4",
+  ]);
+
+  const excelReview = cleanCsv(source, "excel-tab");
+  assert.equal(excelReview.formulaProtectionMode, "excel-tab");
+  assert.equal(excelReview.stats.riskyPrefixesPrefixed, 3);
+  assert.deepEqual(excelReview.table.rows.map(([value]) => value), [
+    "\t=2+2",
+    "safe;\t=3+3",
+    "\t\u200B＝4+4",
+  ]);
+
+  const output = serializeCleanCsv(excelReview);
+  assert.match(output, /"\t=2\+2"/);
+  assert.match(output, /"safe;\t=3\+3"/);
+  assert.doesNotMatch(output, /\t\t=/);
+  assert.deepEqual(parseCsv(output).rows, excelReview.table.rows);
+});
+
+test("upgrades apostrophe-prefixed formulas when Excel-tab mode is selected", () => {
+  const source = {
+    delimiter: ",",
+    headers: ["value"],
+    rows: [
+      ["'=1+1"],
+      ["''+2+2"],
+      ["safe;'@SUM(A1:A2)"],
+      ["'-42"],
+    ],
+  };
+
+  const portable = cleanCsv(source, "portable-apostrophe");
+  assert.deepEqual(portable.table.rows, source.rows);
+
+  const excelReview = cleanCsv(source, "excel-tab");
+  assert.deepEqual(excelReview.table.rows, [
+    ["\t'=1+1"],
+    ["\t''+2+2"],
+    ["safe;\t'@SUM(A1:A2)"],
+    ["\t'-42"],
+  ]);
+  assert.equal(excelReview.stats.riskyPrefixesPrefixed, source.rows.length);
+});
+
+test("keeps Excel-tab cleanup and serialization idempotent across every boundary", () => {
+  const boundaries = [",", ";", "\t", "|", "\r", "\n"];
+  const value = ["=0", ...boundaries.map((boundary) => `safe${boundary}=1`)].join(" tail ");
+  const first = cleanCsv({
+    delimiter: ",",
+    headers: ["value", "note"],
+    rows: [[value, "ok"]],
+  }, "excel-tab");
+  const second = cleanCsv(first.table, "excel-tab");
+  const downloadedAndReparsed = cleanCsv(
+    parseCsv(serializeCleanCsv(first)),
+    "excel-tab",
+  );
+
+  assert.deepEqual(second.table, first.table);
+  assert.deepEqual(downloadedAndReparsed.table, first.table);
+  assert.equal(serializeCsv(first.table, "excel-tab"), serializeCleanCsv(first));
+  assert.match(first.table.rows[0][0], /^\t=0/);
+  for (const boundary of boundaries) {
+    const expectedPrefix = boundary === "\t" ? "\t\t" : `${boundary}\t`;
+    assert.ok(
+      first.table.rows[0][0].includes(`${expectedPrefix}=1`),
+      `${JSON.stringify(boundary)} must have exactly one Excel-tab prefix after its boundary`,
+    );
+  }
+});
+
 test("makes normalized headers unique even when a suffix already exists", () => {
   const result = cleanCsv(parseCsv("a,a,a_2\n1,2,3"));
   assert.deepEqual(result.table.headers, ["a", "a_2", "a_2_2"]);
   assert.equal(new Set(result.table.headers).size, result.table.headers.length);
 });
 
-test("deduplicates trimmed source rows before formula protection", () => {
+test("deduplicates trimmed source rows before risky-prefix handling", () => {
   const result = cleanCsv({
     delimiter: ",",
     headers: ["value"],
@@ -151,7 +239,7 @@ test("deduplicates trimmed source rows before formula protection", () => {
   assert.deepEqual(result.table.rows, [["'=2+2"], ["'=2+2"]]);
   assert.equal(result.stats.outputRows, 2);
   assert.equal(result.stats.duplicatesRemoved, 1);
-  assert.equal(result.stats.formulasProtected, 1);
+  assert.equal(result.stats.riskyPrefixesPrefixed, 1);
 });
 
 test("quotes every output field and preserves a parse/serialize round trip", () => {

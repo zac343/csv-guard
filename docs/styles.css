@@ -32,7 +32,8 @@ body {
 
 button,
 input,
-textarea {
+textarea,
+select {
   font: inherit;
 }
 
@@ -51,6 +52,7 @@ button:focus-visible,
 a:focus-visible,
 summary:focus-visible,
 textarea:focus-visible,
+select:focus-visible,
 .drop-zone:focus-within,
 .table-frame:focus-visible {
   outline: 3px solid var(--focus);
@@ -59,6 +61,16 @@ textarea:focus-visible,
 
 [hidden] {
   display: none !important;
+}
+
+.visually-hidden {
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  height: 1px;
+  overflow: hidden;
+  position: absolute;
+  white-space: nowrap;
+  width: 1px;
 }
 
 .skip-link {
@@ -417,6 +429,41 @@ textarea::placeholder {
   color: #7f8883;
 }
 
+.formula-mode-control {
+  align-items: center;
+  background: #1a201d;
+  border: 1px solid var(--line-dark);
+  border-radius: 4px;
+  display: grid;
+  gap: 0.5rem 1rem;
+  grid-template-columns: auto minmax(210px, 1fr);
+  margin-top: 0.85rem;
+  padding: 0.8rem 0.9rem;
+}
+
+.formula-mode-control label {
+  font-size: 0.75rem;
+  font-weight: 750;
+}
+
+.formula-mode-control select {
+  background: #0f1311;
+  border: 1px solid #4d5752;
+  border-radius: 3px;
+  color: var(--paper);
+  min-height: 38px;
+  padding: 0.45rem 2rem 0.45rem 0.65rem;
+  width: 100%;
+}
+
+.formula-mode-control p {
+  color: #abb3ae;
+  font-size: 0.7rem;
+  grid-column: 1 / -1;
+  line-height: 1.55;
+  margin: 0;
+}
+
 .action-row {
   align-items: flex-start;
   gap: 1rem;
@@ -482,6 +529,14 @@ textarea::placeholder {
   font-size: 1.45rem;
   letter-spacing: -0.03em;
   margin: 0;
+}
+
+.result-mode {
+  color: #aeb5b1;
+  font-family: var(--mono);
+  font-size: 0.68rem;
+  margin: 0.4rem 0 0;
+  text-transform: uppercase;
 }
 
 .download-button {
@@ -687,6 +742,41 @@ td.empty-cell {
   font-size: 0.84rem !important;
   margin-top: 1.5rem;
   padding-left: 1rem;
+}
+
+.risk-note a {
+  color: var(--mint);
+  text-underline-offset: 0.25em;
+}
+
+.mode-comparison {
+  margin-top: 2rem;
+  overflow-x: auto;
+}
+
+.mode-comparison h3 {
+  font-size: 0.9rem;
+  letter-spacing: -0.01em;
+  margin-bottom: 0.9rem;
+}
+
+.mode-comparison table {
+  border: 1px solid var(--line-dark);
+  table-layout: fixed;
+  white-space: normal;
+  width: 100%;
+}
+
+.mode-comparison th,
+.mode-comparison td {
+  max-width: none;
+  min-width: 145px;
+  vertical-align: top;
+}
+
+.mode-comparison td {
+  color: #c4cac6;
+  line-height: 1.5;
 }
 
 .formula-card {
@@ -922,6 +1012,14 @@ footer {
   .action-row p {
     max-width: none;
     text-align: left;
+  }
+
+  .formula-mode-control {
+    grid-template-columns: 1fr;
+  }
+
+  .formula-mode-control p {
+    grid-column: 1;
   }
 
   .primary-button,
