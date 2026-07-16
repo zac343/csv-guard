@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { CsvWorkbench } from "./components/CsvWorkbench";
 
 export const metadata: Metadata = {
-  title: "CSV Guard — Clean risky CSVs locally",
+  title: "Clean risky CSVs locally",
   description:
     "Remove duplicates, empty rows, messy headers, stray whitespace, and spreadsheet formula injection without uploading your CSV.",
 };
@@ -39,11 +39,11 @@ export default function Home() {
             Catch formula injection, duplicates, empty rows, messy headers, and
             stray whitespace in one private, browser-only pass.
           </p>
-          <p className="hero-cn">
-            文件不离开浏览器。无需账号，不上传数据，清理后立即下载。
+          <p className="hero-cn" lang="zh-CN">
+            文件不离开浏览器。无需账号，不上传文件内容，清理后立即下载。
           </p>
           <div className="hero-signals" aria-label="Product guarantees">
-            <span>0 bytes uploaded</span>
+            <span>0 file bytes uploaded</span>
             <span>10 MB max</span>
             <span>No account</span>
           </div>
@@ -65,12 +65,12 @@ export default function Home() {
           <article>
             <span>01</span>
             <h3>Formula injection</h3>
-            <p>Prefixes spreadsheet-executable cells before they reach Excel or Sheets.</p>
+            <p>Prefixes dangerous markers at cell starts and supported delimiter boundaries.</p>
           </article>
           <article>
             <span>02</span>
             <h3>Duplicate rows</h3>
-            <p>Removes byte-equivalent duplicate records after whitespace cleanup.</p>
+            <p>Removes identical duplicate records after whitespace cleanup.</p>
           </article>
           <article>
             <span>03</span>
@@ -122,11 +122,20 @@ export default function Home() {
             <p>Comma, semicolon, tab, and pipe delimiters are detected automatically.</p>
           </details>
           <details>
+            <summary>What are the browser safety limits?</summary>
+            <p>
+              Each file is limited to 10 MB, 100,000 data rows, 5,000 columns,
+              500,000 normalized cells, and 2,000,000 characters per field.
+            </p>
+          </details>
+          <details>
             <summary>What is spreadsheet formula injection?</summary>
             <p>
-              Cells beginning with executable spreadsheet characters can run as
-              formulas when opened. CSV Guard neutralizes likely formula cells
-              with a leading apostrophe.
+              Cells whose first effective character is =, +, -, or @ may be
+              interpreted as formulas when opened. CSV Guard prefixes every
+              such segment—including one exposed after a supported delimiter—with
+              an apostrophe. This conservative rule also converts negative numbers
+              to text.
             </p>
           </details>
           <details>

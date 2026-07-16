@@ -6,6 +6,10 @@ export function getD1() {
   return env.DB ?? null;
 }
 
+export function getMetricsReadToken() {
+  return env.METRICS_READ_TOKEN ?? null;
+}
+
 export function getDb() {
   const d1 = getD1();
   if (!d1) {

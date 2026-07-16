@@ -17,7 +17,7 @@ export default function ErrorBoundary({
     <main className="error-page">
       <p className="eyebrow">The page hit a snag</p>
       <h1>Your CSV is still on your device.</h1>
-      <p>Nothing was uploaded. Reload the workbench and try again.</p>
+      <p>No CSV contents were uploaded. Reload the workbench and try again.</p>
       <button type="button" className="primary-button" onClick={reset}>
         Reload CSV Guard
       </button>

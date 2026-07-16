@@ -8,9 +8,9 @@ import {
   useId,
   useMemo,
   useState,
-  useTransition,
 } from "react";
 import {
+  CSV_LIMITS,
   cleanCsv,
   parseCsv,
   serializeCsv,
@@ -47,7 +47,7 @@ export function CsvWorkbench() {
   const [result, setResult] = useState<CleanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-  const [isPending, startTransition] = useTransition();
+  const [isProcessing, setIsProcessing] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -55,21 +55,29 @@ export function CsvWorkbench() {
     return () => controller.abort();
   }, []);
 
-  const processText = useCallback((text: string, nextFileName: string) => {
-    startTransition(() => {
-      try {
-        const parsed = parseCsv(text);
-        const cleaned = cleanCsv(parsed);
-        setSource(text);
-        setFileName(nextFileName);
-        setResult(cleaned);
-        setError(null);
-        void trackEvent("analyze");
-      } catch (reason) {
-        setResult(null);
-        setError(reason instanceof Error ? reason.message : "Unable to parse this CSV.");
-      }
-    });
+  const processText = useCallback(async (text: string, nextFileName: string) => {
+    if (new Blob([text]).size > MAX_FILE_BYTES) {
+      setError("This CSV is larger than the 10 MB browser limit.");
+      setResult(null);
+      return;
+    }
+
+    setIsProcessing(true);
+    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    try {
+      const parsed = parseCsv(text);
+      const cleaned = cleanCsv(parsed);
+      setSource(text);
+      setFileName(nextFileName);
+      setResult(cleaned);
+      setError(null);
+      void trackEvent("analyze");
+    } catch (reason) {
+      setResult(null);
+      setError(reason instanceof Error ? reason.message : "Unable to parse this CSV.");
+    } finally {
+      setIsProcessing(false);
+    }
   }, []);
 
   const readFile = useCallback(async (file: File) => {
@@ -86,7 +94,7 @@ export function CsvWorkbench() {
     }
 
     try {
-      processText(await file.text(), file.name);
+      await processText(await file.text(), file.name);
     } catch {
       setError("The browser could not read this file.");
       setResult(null);
@@ -124,7 +132,7 @@ export function CsvWorkbench() {
   }, []);
 
   const handleAnalyze = useCallback(() => {
-    processText(source, fileName);
+    void processText(source, fileName);
   }, [fileName, processText, source]);
 
   const handleLoadSample = useCallback(() => {
@@ -161,16 +169,21 @@ export function CsvWorkbench() {
     [result],
   );
   const headerCells = previewHeaders.map((header) => <th key={header}>{header}</th>);
-  const rowCells = previewRows.map((row) => {
+  const rowCells = previewRows.map((row, rowIndex) => {
     const stableKey = row.join("\u001f");
     const cells = row.map((cell, columnIndex) => (
       <td key={`${previewHeaders[columnIndex] ?? "column"}-${columnIndex}`}>{cell || "—"}</td>
     ));
-    return <tr key={stableKey}>{cells}</tr>;
+    return <tr key={`${rowIndex}-${stableKey}`}>{cells}</tr>;
   });
 
   return (
-    <section className="workbench" id="cleaner" aria-labelledby="cleaner-title">
+    <section
+      className="workbench"
+      id="cleaner"
+      aria-labelledby="cleaner-title"
+      aria-busy={isProcessing}
+    >
       <div className="workbench-topline">
         <div>
           <p className="panel-kicker">Local workbench</p>
@@ -194,7 +207,9 @@ export function CsvWorkbench() {
         />
         <span className="drop-icon" aria-hidden="true">CSV</span>
         <strong>Drop a CSV here</strong>
-        <span>or choose a file · max 10 MB</span>
+        <span>
+          or choose a file · max 10 MB · {CSV_LIMITS.dataRows.toLocaleString()} data rows
+        </span>
       </label>
 
       <div className="paste-row">
@@ -217,11 +232,11 @@ export function CsvWorkbench() {
           type="button"
           className="primary-button"
           onClick={handleAnalyze}
-          disabled={!source.trim() || isPending}
+          disabled={!source.trim() || isProcessing}
         >
-          {isPending ? "Inspecting…" : "Inspect CSV"}
+          {isProcessing ? "Inspecting…" : "Inspect CSV"}
         </button>
-        <span>No signup. No upload.</span>
+        <span>No signup. No file upload.</span>
       </div>
 
       {error ? <p className="error-message" role="alert">{error}</p> : null}
@@ -231,7 +246,7 @@ export function CsvWorkbench() {
           <div className="result-summary">
             <div>
               <p className="panel-kicker">Cleanup ready</p>
-              <h3>{result.stats.outputRows.toLocaleString()} safe rows</h3>
+              <h3>{result.stats.outputRows.toLocaleString()} cleaned rows</h3>
             </div>
             <button type="button" className="download-button" onClick={handleDownload}>
               Download cleaned CSV
@@ -242,6 +257,7 @@ export function CsvWorkbench() {
             <div><dt>Duplicates removed</dt><dd>{result.stats.duplicatesRemoved}</dd></div>
             <div><dt>Empty rows removed</dt><dd>{result.stats.emptyRowsRemoved}</dd></div>
             <div><dt>Cells trimmed</dt><dd>{result.stats.cellsTrimmed}</dd></div>
+            <div><dt>Headers normalized</dt><dd>{result.stats.headersNormalized}</dd></div>
           </dl>
           <div className="table-frame" tabIndex={0} aria-label="Cleaned CSV preview">
             <table>
@@ -250,8 +266,9 @@ export function CsvWorkbench() {
             </table>
           </div>
           <p className="preview-note">
-            Previewing {Math.min(result.table.rows.length, 5)} of {result.table.rows.length} rows.
-            Detected {result.inputDelimiterLabel} input.
+            Previewing {Math.min(result.table.rows.length, 5)}/{result.table.rows.length} rows and{" "}
+            {Math.min(result.table.headers.length, 6)}/{result.table.headers.length} columns. Detected{" "}
+            {result.inputDelimiterLabel} input.
           </p>
         </div>
       ) : null}

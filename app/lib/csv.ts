@@ -22,7 +22,15 @@ export type CleanResult = {
 
 const DELIMITERS = [",", ";", "\t", "|"] as const;
 
+export const CSV_LIMITS = {
+  dataRows: 100_000,
+  columns: 5_000,
+  cells: 500_000,
+  fieldCharacters: 2_000_000,
+} as const;
+
 function delimiterLabel(delimiter: string) {
+  if (!delimiter) return "single-column data";
   if (delimiter === "\t") return "tab-separated data";
   if (delimiter === ";") return "semicolon-separated data";
   if (delimiter === "|") return "pipe-separated data";
@@ -78,7 +86,7 @@ export function detectDelimiter(input: string) {
       bestScore = score;
     }
   }
-  return bestDelimiter;
+  return bestScore > 0 ? bestDelimiter : "";
 }
 
 export function parseCsv(input: string): CsvTable {
@@ -90,12 +98,49 @@ export function parseCsv(input: string): CsvTable {
   let row: string[] = [];
   let field = "";
   let inQuotes = false;
+  let parsedCells = 0;
+
+  const appendToField = (value: string) => {
+    if (field.length + value.length > CSV_LIMITS.fieldCharacters) {
+      throw new Error(
+        `A CSV field exceeds the ${CSV_LIMITS.fieldCharacters.toLocaleString("en-US")} character browser limit.`,
+      );
+    }
+    field += value;
+  };
+
+  const pushField = () => {
+    row.push(field);
+    field = "";
+    parsedCells += 1;
+    if (row.length > CSV_LIMITS.columns) {
+      throw new Error(
+        `This CSV exceeds the ${CSV_LIMITS.columns.toLocaleString("en-US")} column browser limit.`,
+      );
+    }
+    if (parsedCells > CSV_LIMITS.cells) {
+      throw new Error(
+        `This CSV exceeds the ${CSV_LIMITS.cells.toLocaleString("en-US")} cell browser limit.`,
+      );
+    }
+  };
+
+  const pushRecord = () => {
+    pushField();
+    records.push(row);
+    row = [];
+    if (records.length > CSV_LIMITS.dataRows + 1) {
+      throw new Error(
+        `This CSV exceeds the ${CSV_LIMITS.dataRows.toLocaleString("en-US")} data row browser limit.`,
+      );
+    }
+  };
 
   for (let index = 0; index < normalizedInput.length; index += 1) {
     const character = normalizedInput[index];
     if (character === '"') {
       if (inQuotes && normalizedInput[index + 1] === '"') {
-        field += '"';
+        appendToField('"');
         index += 1;
       } else {
         inQuotes = !inQuotes;
@@ -104,34 +149,36 @@ export function parseCsv(input: string): CsvTable {
     }
 
     if (character === delimiter && !inQuotes) {
-      row.push(field);
-      field = "";
+      pushField();
       continue;
     }
 
     if ((character === "\n" || character === "\r") && !inQuotes) {
       if (character === "\r" && normalizedInput[index + 1] === "\n") index += 1;
-      row.push(field);
-      records.push(row);
-      row = [];
-      field = "";
+      pushRecord();
       continue;
     }
 
-    field += character;
+    appendToField(character);
   }
 
   if (inQuotes) throw new Error("A quoted field is not closed. Check the final row and try again.");
   if (field.length > 0 || row.length > 0) {
-    row.push(field);
-    records.push(row);
+    pushRecord();
   }
 
+  const logicalRecordCount = records.length;
   const headers = records.shift() ?? [];
   if (headers.length === 0 || headers.every((header) => !header.trim())) {
     throw new Error("The first CSV row needs at least one column header.");
   }
-  const width = Math.max(headers.length, ...records.map((record) => record.length));
+  let width = headers.length;
+  for (const record of records) width = Math.max(width, record.length);
+  if (logicalRecordCount * width > CSV_LIMITS.cells) {
+    throw new Error(
+      `This CSV exceeds the ${CSV_LIMITS.cells.toLocaleString("en-US")} normalized cell browser limit.`,
+    );
+  }
   const paddedHeaders = [...headers, ...Array(Math.max(0, width - headers.length)).fill("")];
   const rows = records.map((record) => [
     ...record,
@@ -153,17 +200,54 @@ function normalizeHeader(header: string, index: number) {
 }
 
 function makeHeadersUnique(headers: string[]) {
-  const seen = new Map<string, number>();
+  const used = new Set<string>();
   return headers.map((header) => {
-    const count = (seen.get(header) ?? 0) + 1;
-    seen.set(header, count);
-    return count === 1 ? header : `${header}_${count}`;
+    let candidate = header;
+    let suffix = 2;
+    while (used.has(candidate)) {
+      candidate = `${header}_${suffix}`;
+      suffix += 1;
+    }
+    used.add(candidate);
+    return candidate;
   });
 }
 
 function looksExecutable(value: string) {
-  if (/^[=+@]/.test(value)) return true;
-  return /^-\s*(?:[A-Za-z_(]|\d+\s*[+*/^])/.test(value);
+  const probe = value
+    .normalize("NFKC")
+    .replace(/^["\p{White_Space}\p{Cc}\p{Cf}]+/u, "");
+  return /^[=+\-@]/u.test(probe);
+}
+
+const EXECUTABLE_SEGMENT_BOUNDARIES = new Set<string>([
+  ...DELIMITERS,
+  "\r",
+  "\n",
+]);
+
+function protectExecutableSegments(value: string) {
+  let output = "";
+  let segmentStart = 0;
+  let protectedSegments = 0;
+
+  for (let index = 0; index <= value.length; index += 1) {
+    const atEnd = index === value.length;
+    if (!atEnd && !EXECUTABLE_SEGMENT_BOUNDARIES.has(value[index])) continue;
+
+    const segment = value.slice(segmentStart, index);
+    if (looksExecutable(segment)) {
+      output += `'${segment}`;
+      protectedSegments += 1;
+    } else {
+      output += segment;
+    }
+
+    if (!atEnd) output += value[index];
+    segmentStart = index + 1;
+  }
+
+  return { value: output, protectedSegments };
 }
 
 export function cleanCsv(table: CsvTable): CleanResult {
@@ -183,27 +267,29 @@ export function cleanCsv(table: CsvTable): CleanResult {
   const rows: string[][] = [];
 
   for (const sourceRow of table.rows) {
-    const cleanedRow = sourceRow.map((cell) => {
+    const trimmedRow = sourceRow.map((cell) => {
       const trimmed = cell.trim();
       if (trimmed !== cell) cellsTrimmed += 1;
-      if (looksExecutable(trimmed)) {
-        formulasProtected += 1;
-        return `'${trimmed}`;
-      }
       return trimmed;
     });
 
-    if (cleanedRow.every((cell) => cell === "")) {
+    if (trimmedRow.every((cell) => cell === "")) {
       emptyRowsRemoved += 1;
       continue;
     }
 
-    const fingerprint = JSON.stringify(cleanedRow);
+    const fingerprint = JSON.stringify(trimmedRow);
     if (seenRows.has(fingerprint)) {
       duplicatesRemoved += 1;
       continue;
     }
     seenRows.add(fingerprint);
+
+    const cleanedRow = trimmedRow.map((cell) => {
+      const protectedCell = protectExecutableSegments(cell);
+      formulasProtected += protectedCell.protectedSegments;
+      return protectedCell.value;
+    });
     rows.push(cleanedRow);
   }
 
@@ -222,17 +308,16 @@ export function cleanCsv(table: CsvTable): CleanResult {
   };
 }
 
-function escapeCsvCell(cell: string, delimiter: string) {
-  if (cell.includes(delimiter) || cell.includes('"') || cell.includes("\n") || cell.includes("\r")) {
-    return `"${cell.replaceAll('"', '""')}"`;
-  }
-  return cell;
+function escapeCsvCell(cell: string) {
+  return `"${cell.replaceAll('"', '""')}"`;
 }
 
 export function serializeCsv(table: CsvTable) {
   const delimiter = table.delimiter || ",";
   const lines = [table.headers, ...table.rows].map((row) =>
-    row.map((cell) => escapeCsvCell(cell, delimiter)).join(delimiter),
+    row
+      .map((cell) => escapeCsvCell(protectExecutableSegments(cell).value))
+      .join(delimiter),
   );
   return `\uFEFF${lines.join("\r\n")}\r\n`;
 }

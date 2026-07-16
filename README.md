@@ -4,13 +4,15 @@ CSV Guard is a privacy-first CSV hygiene tool. It parses and cleans files in the
 
 Current checks:
 
-- neutralize likely spreadsheet formula injection;
+- neutralize `=`, `+`, `-`, and `@` markers at cell starts and supported delimiter or newline boundaries;
 - remove duplicate and empty rows;
 - normalize and de-conflict headers;
 - trim leading and trailing cell whitespace;
 - auto-detect comma, semicolon, tab, and pipe delimiters.
 
-The hosted app stores only anonymous daily counts for page views, sample loads, analyses, and downloads. It does not store filenames or CSV contents.
+Files are limited to 10 MB, 100,000 data rows, 5,000 columns, 500,000 normalized cells, and 2,000,000 characters per field so malformed inputs cannot exhaust a browser tab.
+
+The hosted app stores only anonymous daily counts for page views, sample loads, analyses, and downloads. It does not store filenames or CSV contents. Writes are rate-limited at the edge and capped in D1. These client-originated counts remain directional, untrusted product signals—not authoritative order, revenue, billing, or security records.
 
 ## Local development
 
@@ -27,4 +29,4 @@ npm test
 
 ## Deployment
 
-The project targets the Sites/vinext Cloudflare Worker runtime. D1 is used only for aggregate product metrics; the CSV itself remains in the browser.
+The project targets the Sites/vinext Cloudflare Worker runtime. D1 migrations create the aggregate product-metrics table; the CSV itself remains in the browser. Reading aggregate metrics requires a server-side `METRICS_READ_TOKEN` secret.

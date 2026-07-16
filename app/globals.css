@@ -7,6 +7,7 @@
   --paper-deep: #e8e3d8;
   --coral: #ff6b4a;
   --mint: #65d49a;
+  --focus-ring: #8f301d;
   --line: rgba(17, 21, 19, 0.16);
   --line-dark: rgba(242, 239, 231, 0.16);
 }
@@ -51,7 +52,7 @@ summary:focus-visible,
 textarea:focus-visible,
 .drop-zone:focus-within,
 .table-frame:focus-visible {
-  outline: 3px solid var(--coral);
+  outline: 3px solid var(--focus-ring);
   outline-offset: 3px;
 }
 
@@ -224,6 +225,7 @@ h1 {
 }
 
 .workbench {
+  --focus-ring: var(--mint);
   align-self: center;
   background: var(--ink);
   border: 1px solid #343c38;
@@ -271,7 +273,7 @@ h1 {
   color: #b7c0bc;
   display: flex;
   font-family: var(--font-geist-mono), monospace;
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   gap: 0.5rem;
 }
 
@@ -315,7 +317,7 @@ h1 {
 
 .drop-zone > span:last-child {
   color: #919b96;
-  font-size: 0.72rem;
+  font-size: 0.78rem;
 }
 
 .drop-icon {
@@ -331,7 +333,7 @@ h1 {
 }
 
 .paste-row {
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   margin-bottom: 0.55rem;
 }
 
@@ -344,7 +346,7 @@ h1 {
   border: 0;
   color: var(--mint);
   cursor: pointer;
-  font-size: 0.7rem;
+  font-size: 0.78rem;
   padding: 0.25rem 0;
 }
 
@@ -354,7 +356,7 @@ textarea {
   border-radius: 4px;
   color: #dfe4e1;
   font-family: var(--font-geist-mono), monospace;
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   line-height: 1.6;
   min-height: 118px;
   padding: 0.9rem;
@@ -363,7 +365,7 @@ textarea {
 }
 
 textarea::placeholder {
-  color: #65706a;
+  color: #9aa39e;
 }
 
 .action-row {
@@ -374,7 +376,7 @@ textarea::placeholder {
 .action-row > span {
   color: #818b86;
   font-family: var(--font-geist-mono), monospace;
-  font-size: 0.62rem;
+  font-size: 0.75rem;
 }
 
 .primary-button,
@@ -425,14 +427,14 @@ textarea::placeholder {
 .download-button {
   background: var(--mint);
   color: var(--ink);
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   padding: 0.72rem 0.9rem;
 }
 
 .stats-grid {
   display: grid;
   gap: 1px;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   margin: 1.1rem 0;
 }
 
@@ -443,7 +445,7 @@ textarea::placeholder {
 
 .stats-grid dt {
   color: #8f9994;
-  font-size: 0.58rem;
+  font-size: 0.75rem;
   line-height: 1.25;
   min-height: 2.5em;
   text-transform: uppercase;
@@ -465,7 +467,7 @@ textarea::placeholder {
 table {
   border-collapse: collapse;
   font-family: var(--font-geist-mono), monospace;
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   min-width: 100%;
   white-space: nowrap;
 }
@@ -494,7 +496,7 @@ td {
 
 .preview-note {
   color: #7f8984;
-  font-size: 0.6rem;
+  font-size: 0.75rem;
   margin: 0.55rem 0 0;
 }
 
