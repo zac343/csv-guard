@@ -1,5 +1,5 @@
 import type { MetadataRoute } from "next";
-import { SITE_URL } from "./lib/site";
+import { GUIDE_URL, SITE_URL } from "./lib/site";
 
 export default function sitemap(): MetadataRoute.Sitemap {
   return [
@@ -8,6 +8,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
       lastModified: new Date("2026-07-17T00:00:00+08:00"),
       changeFrequency: "weekly",
       priority: 1,
+    },
+    {
+      url: GUIDE_URL,
+      lastModified: new Date("2026-07-17T00:00:00+08:00"),
+      changeFrequency: "monthly",
+      priority: 0.8,
     },
   ];
 }

@@ -7,6 +7,7 @@ CSV Guard supports comma, semicolon, tab, pipe, and single-column input. The def
 ## Product
 
 - [Use CSV Guard](https://zac343.github.io/csv-guard/): Public static application; processing and export run inside the browser tab.
+- [CSV injection prevention in Excel](https://zac343.github.io/csv-guard/guides/csv-injection-prevention-excel/): Apostrophe-versus-tab trade-offs and a sourced save/close/reopen test workflow.
 - [Project README](https://github.com/zac343/csv-guard/blob/main/README.md): Capabilities, browser limits, privacy model, local development, and verification.
 - [Support forms](https://github.com/zac343/csv-guard/issues/new/choose): Public bug and feature intake; users must provide only synthetic or redacted examples and never attach a private CSV.
 

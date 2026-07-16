@@ -1,11 +1,34 @@
 import type { Metadata } from "next";
 import { CsvWorkbench } from "./components/CsvWorkbench";
-import { SITE_URL, SOURCE_URL, SUPPORT_URL } from "./lib/site";
+import {
+  GUIDE_PATH,
+  SITE_URL,
+  SOCIAL_IMAGE_URL,
+  SOURCE_URL,
+  SUPPORT_URL,
+} from "./lib/site";
 
 export const metadata: Metadata = {
   title: "Clean risky CSVs locally",
   description:
     "Prefix formula-like CSV segments, remove duplicate and empty rows, normalize headers, and trim whitespace without uploading your file.",
+  alternates: {
+    canonical: SITE_URL,
+  },
+  openGraph: {
+    type: "website",
+    siteName: "CSV Guard",
+    title: "CSV Guard — Clean risky CSVs locally",
+    description: "Private CSV hygiene in one browser-only pass.",
+    url: SITE_URL,
+    images: [{ url: SOCIAL_IMAGE_URL, width: 1731, height: 909, alt: "CSV Guard" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "CSV Guard — Clean risky CSVs locally",
+    description: "Private CSV hygiene in one browser-only pass.",
+    images: [SOCIAL_IMAGE_URL],
+  },
 };
 
 const structuredData = {
@@ -48,6 +71,7 @@ export default function Home() {
         </a>
         <nav aria-label="Primary navigation">
           <a href="#cleaner">Cleaner</a>
+          <a href={GUIDE_PATH}>Guide</a>
           <a href="#checks">Checks</a>
           <a href="#privacy">Privacy</a>
           <a href={SOURCE_URL} target="_blank" rel="noreferrer">Source</a>
@@ -138,6 +162,11 @@ export default function Home() {
             <a href="https://owasp.org/www-community/attacks/CSV_Injection" target="_blank" rel="noreferrer">
               OWASP CSV Injection guidance
             </a>.
+          </p>
+          <p>
+            <a className="text-link" href={GUIDE_PATH}>
+              Compare apostrophe and tab prefixes, then test your Excel workflow →
+            </a>
           </p>
         </div>
         <div className="mode-comparison">

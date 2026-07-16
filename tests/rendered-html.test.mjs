@@ -37,7 +37,8 @@ test("ships CSV Guard content and removes the disposable starter", async () => {
   assert.match(workbench, /handleFormulaModeChange[\s\S]+?operations\.invalidate\(\)/);
   assert.match(layout, /CSV Guard — Private CSV cleaner/);
   assert.match(layout, /metadataBase: new URL\(SITE_URL\)/);
-  assert.match(layout, /canonical: SITE_URL/);
+  assert.doesNotMatch(layout, /canonical: SITE_URL/);
+  assert.match(page, /canonical: SITE_URL/);
   assert.match(page, /SoftwareApplication/);
   assert.match(page, /View source/);
   assert.match(page, /Report an issue/);

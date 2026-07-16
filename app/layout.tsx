@@ -22,9 +22,6 @@ export const metadata: Metadata = {
   description:
     "Clean risky CSV files locally: prefix formula-like segments, remove duplicates and empty rows, normalize headers, and trim whitespace.",
   applicationName: "CSV Guard",
-  alternates: {
-    canonical: SITE_URL,
-  },
   keywords: [
     "CSV cleaner",
     "CSV formula injection",
@@ -32,18 +29,6 @@ export const metadata: Metadata = {
     "sanitize CSV",
     "private CSV tool",
   ],
-  openGraph: {
-    type: "website",
-    siteName: "CSV Guard",
-    title: "CSV Guard — Clean risky CSVs locally",
-    description: "Private CSV hygiene in one browser-only pass.",
-    url: SITE_URL,
-  },
-  twitter: {
-    card: "summary",
-    title: "CSV Guard — Clean risky CSVs locally",
-    description: "Private CSV hygiene in one browser-only pass.",
-  },
   icons: {
     icon: "/favicon.svg",
     shortcut: "/favicon.svg",

@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#111513" />
+    <meta name="color-scheme" content="light" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'none'; style-src 'self'; img-src 'self' data:; connect-src 'none'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'none'; media-src 'none'; worker-src 'none'; manifest-src 'none'; upgrade-insecure-requests"
+    />
+    <title>CSV Injection Prevention in Excel: Apostrophe vs. Tab Prefix</title>
+    <meta
+      name="description"
+      content="Compare apostrophe and tab prefixes for CSV injection risk, understand Excel save/reopen trade-offs, and test the full spreadsheet lifecycle."
+    />
+    <meta name="robots" content="index,follow,max-image-preview:large" />
+    <link rel="canonical" href="https://zac343.github.io/csv-guard/guides/csv-injection-prevention-excel/" />
+    <link rel="icon" href="../../favicon.svg" type="image/svg+xml" />
+    <link rel="alternate" type="text/plain" href="../../llms.txt" title="CSV Guard LLM context" />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="CSV Guard" />
+    <meta property="og:title" content="CSV Injection Prevention in Excel: Apostrophe vs. Tab Prefix" />
+    <meta property="og:description" content="Compare prefix trade-offs and test the complete Excel save/reopen lifecycle." />
+    <meta property="og:url" content="https://zac343.github.io/csv-guard/guides/csv-injection-prevention-excel/" />
+    <meta property="og:image" content="https://zac343.github.io/csv-guard/og.png" />
+    <meta property="og:image:width" content="1731" />
+    <meta property="og:image:height" content="909" />
+    <meta property="og:image:alt" content="CSV Guard guide to apostrophe and tab prefix trade-offs" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="CSV Injection Prevention in Excel: Apostrophe vs. Tab Prefix" />
+    <meta name="twitter:description" content="Compare prefix trade-offs and test the complete Excel save/reopen lifecycle." />
+    <meta name="twitter:image" content="https://zac343.github.io/csv-guard/og.png" />
+    <link rel="stylesheet" href="../../styles.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#guide-content">Skip to guide</a>
+
+    <header class="site-header guide-header">
+      <div class="header-inner">
+        <a class="brand" href="../../" aria-label="CSV Guard home">
+          <span class="brand-mark" aria-hidden="true">CG</span>
+          <span>CSV Guard</span>
+        </a>
+        <nav aria-label="Primary navigation">
+          <a href="../../#cleaner">Cleaner</a>
+          <a href="./" aria-current="page">Guide</a>
+          <a href="https://github.com/zac343/csv-guard" target="_blank" rel="noreferrer">Source</a>
+        </nav>
+        <span class="header-status">Lifecycle guide</span>
+      </div>
+    </header>
+
+    <main class="guide-main" id="guide-content">
+      <article>
+        <header class="guide-hero">
+          <p class="eyebrow">CSV injection prevention · Excel workflow</p>
+          <h1>CSV Injection Prevention in Excel: Apostrophe vs. Tab Prefix</h1>
+          <p class="guide-deck">
+            Both prefixes change the underlying value. One may be easier for
+            programmatic consumers; the other may better survive an observed Excel
+            workflow. Neither is a universal safety guarantee.
+          </p>
+          <div class="guide-summary" role="note" aria-labelledby="answer-title">
+            <p class="panel-kicker" id="answer-title">The short answer</p>
+            <p>
+              <strong>No CSV prefix is universally safe</strong> across spreadsheet
+              applications and downstream consumers. Apostrophe prefixing can reduce
+              risk on initial import but may not survive an Excel save/reopen cycle.
+              OWASP documents a tab-inside-a-quoted-field mitigation observed in Excel;
+              the real tab remains in the data and must be tested in your exact workflow.
+            </p>
+          </div>
+        </header>
+
+        <section class="guide-section" id="comparison" aria-labelledby="comparison-title">
+          <div class="guide-section-heading">
+            <p class="eyebrow">Decision table</p>
+            <h2 id="comparison-title">Choose for the destination, then verify the lifecycle.</h2>
+          </div>
+          <div class="guide-table-frame" tabindex="0" aria-label="Prefix comparison table">
+            <table>
+              <caption>Apostrophe and tab prefix trade-offs</caption>
+              <thead>
+                <tr>
+                  <th scope="col">Prefix</th>
+                  <th scope="col">Reason to consider it</th>
+                  <th scope="col">What can go wrong</th>
+                  <th scope="col">Use only after</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <th scope="row">Apostrophe</th>
+                  <td>Useful when every downstream consumer accepts or deliberately strips it.</td>
+                  <td>It changes the value, and its escape behavior may disappear after Excel saves and reopens a CSV.</td>
+                  <td>Testing the initial import and the saved file that users will reopen.</td>
+                </tr>
+                <tr>
+                  <th scope="row">Tab</th>
+                  <td>OWASP records an Excel-observed mitigation using a tab inside a quoted field.</td>
+                  <td>The real tab remains in the data and can disrupt parsers, joins, type inference, or another spreadsheet.</td>
+                  <td>Testing the exact Excel version, locale, import path, and downstream program.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <p class="guide-caveat">
+            “Observed in Excel” is not a Microsoft guarantee or a promise about every
+            release, operating system, locale, file-open method, or spreadsheet product.
+          </p>
+        </section>
+
+        <section class="guide-section" id="test-workflow" aria-labelledby="workflow-title">
+          <div class="guide-section-heading">
+            <p class="eyebrow">Lifecycle test</p>
+            <h2 id="workflow-title">Test the file users actually exchange.</h2>
+          </div>
+          <ol class="workflow-list">
+            <li>
+              <span>01</span>
+              <div><h3>Record the environment</h3><p>Capture the Excel version and build, operating system, locale and list separator, import method, and relevant Trust Center settings.</p></div>
+            </li>
+            <li>
+              <span>02</span>
+              <div><h3>Inspect the raw output</h3><p>Confirm the actual delimiter, quoted fields, escaped quotes, BOM, and exact prefix positions before opening the file.</p></div>
+            </li>
+            <li>
+              <span>03</span>
+              <div><h3>Open it the real way</h3><p>Use the production import path—double-click, File Open, or Data &gt; From Text/CSV—then inspect both the displayed cell and the formula bar.</p></div>
+            </li>
+            <li>
+              <span>04</span>
+              <div><h3>Cross the save boundary</h3><p>Save the CSV, close Excel, and reopen it by the same path. Repeat the cell and formula-bar checks.</p></div>
+            </li>
+            <li>
+              <span>05</span>
+              <div><h3>Compare and consume</h3><p>Perform a raw-file diff before and after Excel, then load the saved file into every downstream parser that matters.</p></div>
+            </li>
+          </ol>
+        </section>
+
+        <section class="guide-section guide-grid" id="test-cases" aria-labelledby="cases-title">
+          <div class="guide-section-heading">
+            <p class="eyebrow">Harmless cases</p>
+            <h2 id="cases-title">Separate a risk marker from malicious intent.</h2>
+          </div>
+          <div>
+            <p>
+              Start with inert arithmetic examples such as <code>=1+1</code>,
+              <code>+1+1</code>, <code>-1+1</code>, <code>-42</code>, and
+              <code>@SUM(1,1)</code>. Exercise cell starts, supported delimiters,
+              embedded line breaks, escaped quotes, leading whitespace, and values
+              that already contain an apostrophe or tab.
+            </p>
+            <p>
+              Negative numbers are an important false positive: <code>-42</code> can
+              be ordinary data, yet a conservative marker rule prefixes it and changes
+              its inferred type. Validate identifiers, leading zeros, joins, and numeric
+              calculations after every mode.
+            </p>
+            <p>
+              Do not copy command-execution or real exfiltration payloads into routine
+              acceptance tests. Any external-impact testing belongs in an isolated,
+              authorized environment.
+            </p>
+          </div>
+        </section>
+
+        <section class="guide-section" id="sources" aria-labelledby="sources-title">
+          <div class="guide-section-heading">
+            <p class="eyebrow">Primary sources</p>
+            <h2 id="sources-title">Read the behavior, not a promise.</h2>
+          </div>
+          <ul class="source-list">
+            <li>
+              <a href="https://owasp.org/www-community/attacks/CSV_Injection" target="_blank" rel="noreferrer">OWASP: CSV Injection <span aria-hidden="true">↗</span></a>
+              <p>Risk markers, separator boundaries, and prefix trade-offs.</p>
+            </li>
+            <li>
+              <a href="https://owasp.org/www-project-web-security-testing-guide/latest/4-Web_Application_Security_Testing/07-Input_Validation_Testing/21-Testing_for_CSV_Injection" target="_blank" rel="noreferrer">OWASP WSTG: Testing for CSV Injection <span aria-hidden="true">↗</span></a>
+              <p>A lifecycle-oriented test method for spreadsheet behavior.</p>
+            </li>
+            <li>
+              <a href="https://support.microsoft.com/en-us/excel/get-started/import-or-export-text-txt-or-csv-files" target="_blank" rel="noreferrer">Microsoft: Import or export text and CSV files <span aria-hidden="true">↗</span></a>
+              <p>How open method, delimiter, and regional settings affect CSV interpretation.</p>
+            </li>
+          </ul>
+        </section>
+
+        <aside class="guide-cta" aria-labelledby="cta-title">
+          <div>
+            <p class="eyebrow">Try both outputs locally</p>
+            <h2 id="cta-title">Inspect a synthetic CSV in your browser.</h2>
+            <p>CSV Guard keeps file contents in the tab and makes the chosen prefix visible in the downloaded filename.</p>
+          </div>
+          <a class="primary-button" href="../../#cleaner">Open the CSV cleaner</a>
+        </aside>
+      </article>
+    </main>
+
+    <footer>
+      <div class="footer-inner">
+        <a class="brand" href="../../">
+          <span class="brand-mark" aria-hidden="true">CG</span><span>CSV Guard</span>
+        </a>
+        <p>Educational guidance, not a universal security guarantee.</p>
+        <div class="footer-links">
+          <a class="source-link" href="https://github.com/zac343/csv-guard" target="_blank" rel="noreferrer">View source <span aria-hidden="true">↗</span></a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
