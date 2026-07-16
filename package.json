@@ -8,9 +8,10 @@
   "scripts": {
     "dev": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext dev",
     "build": "WRANGLER_LOG_PATH=.wrangler/wrangler.log vinext build",
+    "build:pages": "esbuild docs-src/app.ts --bundle --format=esm --platform=browser --target=es2020 --minify --outfile=docs/app.js",
     "typecheck": "tsc --noEmit",
-    "test": "npm run typecheck && npm run build && node --test tests/*.test.*",
-    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next",
+    "test": "npm run build:pages && npm run typecheck && npm run build && node --test tests/*.test.*",
+    "lint": "eslint . --ignore-pattern dist --ignore-pattern .next --ignore-pattern docs/app.js",
     "db:generate": "drizzle-kit generate"
   },
   "dependencies": {
@@ -28,6 +29,7 @@
     "@vitejs/plugin-react": "6.0.2",
     "@vitejs/plugin-rsc": "0.5.26",
     "drizzle-kit": "0.31.10",
+    "esbuild": "0.28.1",
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.6",
     "react-server-dom-webpack": "19.2.6",

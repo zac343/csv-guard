@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { CsvWorkbench } from "./components/CsvWorkbench";
+import { SITE_URL, SOURCE_URL } from "./lib/site";
 
 export const metadata: Metadata = {
   title: "Clean risky CSVs locally",
@@ -7,9 +8,37 @@ export const metadata: Metadata = {
     "Remove duplicates, empty rows, messy headers, stray whitespace, and spreadsheet formula injection without uploading your CSV.",
 };
 
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  name: "CSV Guard",
+  applicationCategory: "DeveloperApplication",
+  operatingSystem: "Any modern browser",
+  url: SITE_URL,
+  codeRepository: SOURCE_URL,
+  description:
+    "A privacy-first browser tool that cleans risky CSV files without uploading file contents.",
+  offers: {
+    "@type": "Offer",
+    price: "0",
+    priceCurrency: "USD",
+  },
+  featureList: [
+    "Spreadsheet formula-injection protection",
+    "Duplicate and empty row removal",
+    "Header normalization",
+    "Whitespace cleanup",
+    "Local browser processing",
+  ],
+};
+
 export default function Home() {
   return (
     <main>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
+      />
       <header className="site-header">
         <a className="brand" href="#top" aria-label="CSV Guard home">
           <span className="brand-mark" aria-hidden="true">
@@ -21,6 +50,7 @@ export default function Home() {
           <a href="#cleaner">Cleaner</a>
           <a href="#checks">Checks</a>
           <a href="#privacy">Privacy</a>
+          <a href={SOURCE_URL} target="_blank" rel="noreferrer">Source</a>
         </nav>
         <span className="header-status">Local-only processing</span>
       </header>
@@ -126,6 +156,7 @@ export default function Home() {
             <p>
               Each file is limited to 10 MB, 100,000 data rows, 5,000 columns,
               500,000 normalized cells, and 2,000,000 characters per field.
+              Large inputs can still be memory-intensive, especially on mobile.
             </p>
           </details>
           <details>
@@ -155,7 +186,9 @@ export default function Home() {
           <span>CSV Guard</span>
         </a>
         <p>Private CSV hygiene for careful teams.</p>
-        <p>Built for deterministic fixes, not guesses.</p>
+        <p>
+          <a href={SOURCE_URL} target="_blank" rel="noreferrer">View source on GitHub ↗</a>
+        </p>
       </footer>
     </main>
   );

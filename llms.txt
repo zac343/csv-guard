@@ -1,0 +1,21 @@
+# CSV Guard
+
+> CSV Guard is a free, privacy-first browser tool for deterministic CSV hygiene. It protects spreadsheet-bound text from formula injection, removes duplicate and empty rows, normalizes headers, trims cell edges, and downloads a separate guarded CSV without uploading file contents.
+
+CSV Guard supports comma, semicolon, tab, pipe, and single-column input. The public static edition has no analytics endpoint or account system, and its browser policy blocks background network connections. It is a hygiene tool, not a business-rule or factual-data validator. Negative values that begin with a minus sign are conservatively exported as text.
+
+## Product
+
+- [Use CSV Guard](https://zac343.github.io/csv-guard/): Public static application; processing and export run inside the browser tab.
+- [Project README](https://github.com/zac343/csv-guard/blob/main/README.md): Capabilities, browser limits, privacy model, local development, and verification.
+
+## Technical reference
+
+- [CSV engine](https://github.com/zac343/csv-guard/blob/main/app/lib/csv.ts): Delimiter detection, parsing, cleanup, formula protection, resource limits, and serialization.
+- [CSV behavior tests](https://github.com/zac343/csv-guard/blob/main/tests/csv.test.ts): Executable-prefix, Unicode, quoting, delimiter, deduplication, and resource-boundary coverage.
+- [Static browser controller](https://github.com/zac343/csv-guard/blob/main/docs-src/app.ts): File, paste, sample, preview, and download interactions for the no-telemetry edition.
+
+## Optional
+
+- [Source repository](https://github.com/zac343/csv-guard): Viewable source and release history. No software license is currently granted by the repository.
+- [Hosted metrics route](https://github.com/zac343/csv-guard/blob/main/app/api/events/route.ts): Aggregate-only telemetry implementation used by the separate dynamic edition, not by the static application linked above.

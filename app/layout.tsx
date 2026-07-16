@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import { SITE_URL } from "./lib/site";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -13,6 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL),
   title: {
     default: "CSV Guard — Private CSV cleaner",
     template: "%s · CSV Guard",
@@ -20,6 +22,9 @@ export const metadata: Metadata = {
   description:
     "Clean risky CSV files locally: neutralize formula injection, remove duplicates and empty rows, normalize headers, and trim whitespace.",
   applicationName: "CSV Guard",
+  alternates: {
+    canonical: SITE_URL,
+  },
   keywords: [
     "CSV cleaner",
     "CSV formula injection",
@@ -32,6 +37,7 @@ export const metadata: Metadata = {
     siteName: "CSV Guard",
     title: "CSV Guard — Clean risky CSVs locally",
     description: "Private CSV hygiene in one browser-only pass.",
+    url: SITE_URL,
   },
   twitter: {
     card: "summary",

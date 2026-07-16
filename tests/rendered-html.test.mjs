@@ -3,18 +3,28 @@ import { access, readFile } from "node:fs/promises";
 import test from "node:test";
 
 test("ships CSV Guard content and removes the disposable starter", async () => {
-  const [page, layout, workbench, packageJson, metricsRoute] = await Promise.all([
+  const [page, layout, workbench, packageJson, metricsRoute, robots, sitemap, site] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/components/CsvWorkbench.tsx", import.meta.url), "utf8"),
     readFile(new URL("../package.json", import.meta.url), "utf8"),
     readFile(new URL("../app/api/events/route.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/robots.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/sitemap.ts", import.meta.url), "utf8"),
+    readFile(new URL("../app/lib/site.ts", import.meta.url), "utf8"),
   ]);
 
   assert.match(page, /Clean risky CSVs/);
   assert.match(page, /Your rows never touch our server/);
   assert.match(workbench, /Drop a CSV here/);
   assert.match(layout, /CSV Guard — Private CSV cleaner/);
+  assert.match(layout, /metadataBase: new URL\(SITE_URL\)/);
+  assert.match(layout, /canonical: SITE_URL/);
+  assert.match(page, /SoftwareApplication/);
+  assert.match(page, /View source on GitHub/);
+  assert.match(robots, /sitemap/);
+  assert.match(sitemap, /changeFrequency: "weekly"/);
+  assert.match(site, /zac343\.github\.io\/csv-guard\//);
   assert.doesNotMatch(`${page}${layout}${workbench}${packageJson}`, /codex-preview|react-loading-skeleton|Your site is taking shape/i);
   assert.doesNotMatch(metricsRoute, /CREATE TABLE/i);
   assert.match(metricsRoute, /SUM\(count\) AS count/);

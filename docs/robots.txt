@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://zac343.github.io/csv-guard/sitemap.xml

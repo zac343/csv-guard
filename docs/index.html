@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#111513" />
+    <meta name="color-scheme" content="light" />
+    <meta name="referrer" content="strict-origin-when-cross-origin" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src 'none'; font-src 'self'; object-src 'none'; base-uri 'self'; form-action 'none'; frame-src 'none'; media-src 'none'; worker-src 'none'; manifest-src 'none'; upgrade-insecure-requests"
+    />
+    <title>CSV Guard — Clean risky CSVs locally</title>
+    <meta
+      name="description"
+      content="Remove formula injection, duplicate and empty rows, messy headers, and stray whitespace without uploading your CSV. Free, browser-only, with source available."
+    />
+    <meta name="robots" content="index,follow,max-image-preview:large" />
+    <link rel="canonical" href="https://zac343.github.io/csv-guard/" />
+    <link rel="icon" href="./favicon.svg" type="image/svg+xml" />
+    <link rel="alternate" type="text/plain" href="./llms.txt" title="CSV Guard LLM context" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="CSV Guard" />
+    <meta property="og:title" content="CSV Guard — Clean risky CSVs locally" />
+    <meta
+      property="og:description"
+      content="Private, deterministic CSV cleanup. Your rows never leave the browser."
+    />
+    <meta property="og:url" content="https://zac343.github.io/csv-guard/" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="CSV Guard — Clean risky CSVs locally" />
+    <meta
+      name="twitter:description"
+      content="Protect spreadsheet-bound CSVs without uploading them."
+    />
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="module" src="./app.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#cleaner">Skip to CSV cleaner</a>
+
+    <header class="site-header">
+      <div class="header-inner">
+        <a class="brand" href="#top" aria-label="CSV Guard home">
+          <span class="brand-mark" aria-hidden="true">CG</span>
+          <span>CSV Guard</span>
+        </a>
+        <nav aria-label="Primary navigation">
+          <a href="#cleaner">Cleaner</a>
+          <a href="#checks">Checks</a>
+          <a href="#privacy">Privacy</a>
+          <a href="https://github.com/zac343/csv-guard" target="_blank" rel="noreferrer">Source</a>
+        </nav>
+        <span class="header-status"><i aria-hidden="true"></i>No telemetry</span>
+      </div>
+    </header>
+
+    <main id="top">
+      <section class="hero" aria-labelledby="hero-title">
+        <div class="hero-grid" aria-hidden="true"></div>
+        <div class="hero-inner">
+          <div class="hero-copy">
+            <p class="eyebrow"><span></span>CSV hygiene, before production</p>
+            <h1 id="hero-title">Clean risky CSVs.<br /><em>Keep the rows private.</em></h1>
+            <p class="hero-lede">
+              Catch spreadsheet formula injection, duplicate records, empty rows,
+              messy headers, and stray whitespace in one deterministic pass.
+            </p>
+            <p class="hero-cn" lang="zh-CN">
+              文件不离开浏览器。无需账号、不上传文件内容，清理后立即下载。
+            </p>
+            <ul class="hero-signals" aria-label="Product guarantees">
+              <li>0 file bytes uploaded</li>
+              <li>10 MB maximum</li>
+              <li>No account</li>
+            </ul>
+          </div>
+
+          <section class="workbench" id="cleaner" tabindex="-1" aria-labelledby="cleaner-title">
+            <div class="workbench-topline">
+              <div>
+                <p class="panel-kicker">Local workbench</p>
+                <h2 id="cleaner-title">Inspect a CSV</h2>
+              </div>
+              <span class="privacy-badge"><i aria-hidden="true"></i>File stays here</span>
+            </div>
+
+            <label class="drop-zone" id="drop-zone" for="csv-file">
+              <input id="csv-file" type="file" accept=".csv,text/csv" />
+              <span class="drop-icon" aria-hidden="true">CSV</span>
+              <strong>Drop a CSV here</strong>
+              <span>or choose a file · max 10 MB · 100,000 data rows</span>
+            </label>
+
+            <div class="paste-label-row">
+              <label for="csv-source">Or paste CSV text</label>
+              <button class="text-button" id="load-sample" type="button">Load a risky sample</button>
+            </div>
+            <textarea
+              id="csv-source"
+              rows="6"
+              spellcheck="false"
+              placeholder="name,email,company&#10;Ada,ada@example.com,Analytical Engines"
+            ></textarea>
+
+            <div class="action-row">
+              <button class="primary-button" id="analyze-csv" type="button" disabled>Inspect CSV</button>
+              <p id="workbench-status" role="status" aria-live="polite">Waiting for a CSV.</p>
+            </div>
+            <p class="error-message" id="error-message" role="alert" hidden></p>
+
+            <section class="results" id="results" aria-labelledby="output-heading" hidden>
+              <div class="result-summary">
+                <div>
+                  <p class="panel-kicker">Cleanup ready</p>
+                  <h3 id="output-heading">0 cleaned rows</h3>
+                </div>
+                <button class="download-button" id="download-csv" type="button" disabled>
+                  Download cleaned CSV
+                </button>
+              </div>
+
+              <dl class="stats-grid">
+                <div><dt>Formulas protected</dt><dd data-stat="formulas">0</dd></div>
+                <div><dt>Duplicates removed</dt><dd data-stat="duplicates">0</dd></div>
+                <div><dt>Empty rows removed</dt><dd data-stat="empty">0</dd></div>
+                <div><dt>Cells trimmed</dt><dd data-stat="trimmed">0</dd></div>
+                <div><dt>Headers normalized</dt><dd data-stat="headers">0</dd></div>
+              </dl>
+
+              <div class="table-frame" tabindex="0" aria-label="Cleaned CSV preview">
+                <table id="preview-table"></table>
+              </div>
+              <p class="preview-note" id="preview-note"></p>
+            </section>
+
+            <noscript>
+              <p class="error-message">CSV Guard needs JavaScript to process files locally.</p>
+            </noscript>
+          </section>
+        </div>
+      </section>
+
+      <section class="checks-section" id="checks" aria-labelledby="checks-title">
+        <div class="section-heading">
+          <p class="eyebrow">Five deterministic checks</p>
+          <h2 id="checks-title">Small CSV defects become expensive downstream.</h2>
+          <p>
+            CSV Guard makes conservative, repeatable fixes and reports an exact count
+            for every change before you download.
+          </p>
+        </div>
+        <div class="check-grid">
+          <article><span>01</span><h3>Formula injection</h3><p>Prefixes spreadsheet control markers with an apostrophe so imported cells stay text.</p></article>
+          <article><span>02</span><h3>Duplicate rows</h3><p>Removes byte-equivalent records after leading and trailing whitespace cleanup.</p></article>
+          <article><span>03</span><h3>Empty records</h3><p>Drops rows with no meaningful value across every detected column.</p></article>
+          <article><span>04</span><h3>Messy headers</h3><p>Normalizes field names and resolves collisions without discarding columns.</p></article>
+          <article><span>05</span><h3>Stray whitespace</h3><p>Trims invisible edges that break joins, comparisons, and imports.</p></article>
+        </div>
+      </section>
+
+      <section class="risk-section" aria-labelledby="risk-title">
+        <div class="risk-copy">
+          <p class="eyebrow">The risk hiding in plain text</p>
+          <h2 id="risk-title">A CSV cell can become executable when a spreadsheet opens it.</h2>
+          <p>
+            If a cell’s first effective character is <code>=</code>, <code>+</code>,
+            <code>-</code>, or <code>@</code>, spreadsheet software may interpret it as
+            a formula. CSV Guard adds a leading apostrophe to every such segment,
+            including one exposed after a comma, semicolon, tab, or pipe.
+          </p>
+          <p class="risk-note">
+            This is deliberately conservative: negative numbers are exported as text.
+            Review typed columns after import if numeric inference matters to your workflow.
+          </p>
+        </div>
+        <div class="formula-card" aria-label="Formula injection protection example">
+          <div><span>Risky input</span><code>=HYPERLINK("https://example.test")</code></div>
+          <div class="formula-arrow" aria-hidden="true">↓</div>
+          <div><span>Guarded output</span><code>'=HYPERLINK("https://example.test")</code></div>
+        </div>
+      </section>
+
+      <section class="limits-section" aria-labelledby="limits-title">
+        <div>
+          <p class="eyebrow">Browser safety envelope</p>
+          <h2 id="limits-title">Hard limits bound parser work.</h2>
+          <p class="limits-note">Large inputs can still be memory-intensive, especially on mobile devices.</p>
+        </div>
+        <dl class="limits-grid">
+          <div><dt>File or pasted text</dt><dd>10 MB</dd></div>
+          <div><dt>Data rows</dt><dd>100,000</dd></div>
+          <div><dt>Columns</dt><dd>5,000</dd></div>
+          <div><dt>Normalized cells</dt><dd>500,000</dd></div>
+          <div><dt>Characters per field</dt><dd>2,000,000</dd></div>
+        </dl>
+      </section>
+
+      <section class="privacy-section" id="privacy" aria-labelledby="privacy-title">
+        <div>
+          <p class="eyebrow">Privacy by architecture</p>
+          <h2 id="privacy-title">Your rows never touch an application server.</h2>
+        </div>
+        <div class="privacy-copy">
+          <p>
+            Parsing, cleanup, preview, and export all run inside this browser tab.
+            This static edition has no analytics endpoint, no account system, and a
+            browser policy that blocks background network connections.
+          </p>
+          <p>
+            GitHub Pages serves the initial HTML, CSS, and JavaScript files. After
+            those assets load, CSV Guard makes no network requests; disconnect and
+            the cleaner keeps working. Inspect the
+            <a href="https://github.com/zac343/csv-guard" target="_blank" rel="noreferrer">viewable source</a>
+            if you want to verify the implementation.
+          </p>
+        </div>
+      </section>
+
+      <section class="faq-section" aria-labelledby="faq-title">
+        <p class="eyebrow">Straight answers</p>
+        <h2 id="faq-title">FAQ</h2>
+        <div class="faq-list">
+          <details>
+            <summary>Does CSV Guard upload my file?</summary>
+            <p>No. File content is parsed and cleaned locally in your browser.</p>
+          </details>
+          <details>
+            <summary>Which delimiters are supported?</summary>
+            <p>Comma, semicolon, tab, and pipe delimiters are detected automatically.</p>
+          </details>
+          <details>
+            <summary>Will it change my original file?</summary>
+            <p>No. Your original remains untouched. CSV Guard downloads a separate <code>.guarded.csv</code> copy.</p>
+          </details>
+          <details>
+            <summary>Is this a business-rule validation platform?</summary>
+            <p>No. It performs deterministic hygiene checks; it does not decide whether an email, identifier, or address is factually correct.</p>
+          </details>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div class="footer-inner">
+        <a class="brand" href="#top">
+          <span class="brand-mark" aria-hidden="true">CG</span><span>CSV Guard</span>
+        </a>
+        <p>Private CSV hygiene for careful teams.</p>
+        <a class="source-link" href="https://github.com/zac343/csv-guard" target="_blank" rel="noreferrer">View source on GitHub <span aria-hidden="true">↗</span></a>
+      </div>
+    </footer>
+  </body>
+</html>
