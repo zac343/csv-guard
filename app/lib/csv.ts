@@ -41,55 +41,112 @@ function delimiterLabel(delimiter: string) {
 }
 
 export function detectDelimiter(input: string) {
-  const counts = new Map<string, number[]>(DELIMITERS.map((delimiter) => [delimiter, []]));
-  const current = new Map<string, number>(DELIMITERS.map((delimiter) => [delimiter, 0]));
-  let inQuotes = false;
-  let logicalRows = 0;
+  const counts = new Map<string, number[]>();
+  for (const delimiter of DELIMITERS) {
+    const rowCounts: number[] = [];
+    let current = 0;
+    let inQuotes = false;
+    let fieldStarted = false;
+    let logicalRows = 0;
+    let hasCurrentRow = false;
 
-  for (let index = 0; index < input.length && logicalRows < 8; index += 1) {
-    const character = input[index];
-    if (character === '"') {
-      if (inQuotes && input[index + 1] === '"') {
-        index += 1;
-      } else {
-        inQuotes = !inQuotes;
+    for (let index = 0; index < input.length && logicalRows < 8; index += 1) {
+      const character = input[index];
+      if (character === '"') {
+        hasCurrentRow = true;
+        if (inQuotes && input[index + 1] === '"') {
+          index += 1;
+        } else if (inQuotes) {
+          inQuotes = false;
+        } else if (!fieldStarted) {
+          inQuotes = true;
+          fieldStarted = true;
+        }
+        continue;
       }
-      continue;
-    }
 
-    if (!inQuotes && DELIMITERS.includes(character as (typeof DELIMITERS)[number])) {
-      current.set(character, (current.get(character) ?? 0) + 1);
-    }
-
-    if (!inQuotes && (character === "\n" || character === "\r")) {
-      if (character === "\r" && input[index + 1] === "\n") index += 1;
-      for (const delimiter of DELIMITERS) {
-        counts.get(delimiter)?.push(current.get(delimiter) ?? 0);
-        current.set(delimiter, 0);
+      if (
+        !inQuotes &&
+        DELIMITERS.includes(character as (typeof DELIMITERS)[number])
+      ) {
+        if (character === delimiter) current += 1;
+        fieldStarted = false;
+        hasCurrentRow = true;
+        continue;
       }
-      logicalRows += 1;
-    }
-  }
 
-  if (logicalRows === 0 || [...current.values()].some((count) => count > 0)) {
-    for (const delimiter of DELIMITERS) counts.get(delimiter)?.push(current.get(delimiter) ?? 0);
+      if (!inQuotes && (character === "\n" || character === "\r")) {
+        if (character === "\r" && input[index + 1] === "\n") index += 1;
+        rowCounts.push(current);
+        current = 0;
+        fieldStarted = false;
+        hasCurrentRow = false;
+        logicalRows += 1;
+        continue;
+      }
+
+      fieldStarted = true;
+      hasCurrentRow = true;
+    }
+
+    if (logicalRows === 0 || (logicalRows < 8 && hasCurrentRow)) {
+      rowCounts.push(current);
+    }
+    counts.set(delimiter, rowCounts);
   }
 
   let bestDelimiter = ",";
-  let bestScore = 0;
+  let bestFound = false;
+  let bestHeaderPresent = false;
+  let bestSupportRatio = 0;
+  let bestCoverageRatio = 0;
+  let bestModeCount = 0;
   for (const delimiter of DELIMITERS) {
     const rowCounts = counts.get(delimiter) ?? [];
     const positive = rowCounts.filter((count) => count > 0);
     if (positive.length === 0) continue;
-    const average = positive.reduce((sum, count) => sum + count, 0) / positive.length;
-    const variance = positive.reduce((sum, count) => sum + Math.abs(count - average), 0);
-    const score = positive.length * 10 + average - variance;
-    if (score > bestScore) {
+
+    const frequencies = new Map<number, number>();
+    for (const count of positive) {
+      frequencies.set(count, (frequencies.get(count) ?? 0) + 1);
+    }
+    let modeCount = 0;
+    let modeSupport = 0;
+    for (const [count, support] of frequencies) {
+      if (support > modeSupport || (support === modeSupport && count > modeCount)) {
+        modeCount = count;
+        modeSupport = support;
+      }
+    }
+
+    const supportRatio = modeSupport / rowCounts.length;
+    const coverageRatio = positive.length / rowCounts.length;
+    const headerPresent = (rowCounts[0] ?? 0) > 0;
+    const equallySupportedByHeader = headerPresent === bestHeaderPresent;
+    const equallyConsistent = supportRatio === bestSupportRatio;
+    const equallyCovered = coverageRatio === bestCoverageRatio;
+    const perfectTie =
+      equallySupportedByHeader &&
+      equallyConsistent &&
+      equallyCovered &&
+      supportRatio === 1 &&
+      coverageRatio === 1;
+    if (
+      !bestFound ||
+      (headerPresent && !bestHeaderPresent) ||
+      (equallySupportedByHeader && coverageRatio > bestCoverageRatio) ||
+      (equallySupportedByHeader && equallyCovered && supportRatio > bestSupportRatio) ||
+      (perfectTie && modeCount > bestModeCount)
+    ) {
       bestDelimiter = delimiter;
-      bestScore = score;
+      bestFound = true;
+      bestHeaderPresent = headerPresent;
+      bestSupportRatio = supportRatio;
+      bestCoverageRatio = coverageRatio;
+      bestModeCount = modeCount;
     }
   }
-  return bestScore > 0 ? bestDelimiter : "";
+  return bestFound ? bestDelimiter : "";
 }
 
 export function parseCsv(input: string): CsvTable {
@@ -101,6 +158,7 @@ export function parseCsv(input: string): CsvTable {
   let row: string[] = [];
   let field = "";
   let inQuotes = false;
+  let fieldStarted = false;
   let parsedCells = 0;
 
   const appendToField = (value: string) => {
@@ -110,11 +168,13 @@ export function parseCsv(input: string): CsvTable {
       );
     }
     field += value;
+    fieldStarted = true;
   };
 
   const pushField = () => {
     row.push(field);
     field = "";
+    fieldStarted = false;
     parsedCells += 1;
     if (row.length > CSV_LIMITS.columns) {
       throw new Error(
@@ -145,8 +205,13 @@ export function parseCsv(input: string): CsvTable {
       if (inQuotes && normalizedInput[index + 1] === '"') {
         appendToField('"');
         index += 1;
+      } else if (inQuotes) {
+        inQuotes = false;
+      } else if (!fieldStarted) {
+        inQuotes = true;
+        fieldStarted = true;
       } else {
-        inQuotes = !inQuotes;
+        appendToField('"');
       }
       continue;
     }
@@ -230,10 +295,30 @@ const EXECUTABLE_SEGMENT_BOUNDARIES = new Set<string>([
   "\n",
 ]);
 
-function alreadyHasExcelTabPrefix(value: string, segmentStart: number) {
-  if (segmentStart === 0 || value[segmentStart - 1] !== "\t") return false;
-  if (segmentStart === 1) return true;
-  return EXECUTABLE_SEGMENT_BOUNDARIES.has(value[segmentStart - 2]);
+function isExecutableSegmentBoundary(character: string) {
+  if (EXECUTABLE_SEGMENT_BOUNDARIES.has(character)) return true;
+  return [...character.normalize("NFKC")].some((normalizedCharacter) =>
+    EXECUTABLE_SEGMENT_BOUNDARIES.has(normalizedCharacter)
+  );
+}
+
+function alreadyHasApostrophePrefix(value: string) {
+  const probe = value
+    .normalize("NFKC")
+    .replace(/^["\p{White_Space}\p{Cc}\p{Cf}]+/u, "");
+  return probe.startsWith("'");
+}
+
+function alreadyHasLayeredExcelPrefix(
+  value: string,
+  segmentStart: number,
+  segment: string,
+) {
+  return (
+    segmentStart > 0 &&
+    value[segmentStart - 1] === "\t" &&
+    alreadyHasApostrophePrefix(segment)
+  );
 }
 
 function protectExecutableSegments(
@@ -243,20 +328,28 @@ function protectExecutableSegments(
   let output = "";
   let segmentStart = 0;
   let protectedSegments = 0;
-  const prefix = formulaProtectionMode === "excel-tab" ? "\t" : "'";
 
-  for (let index = 0; index <= value.length; index += 1) {
+  for (let index = 0; index <= value.length;) {
     const atEnd = index === value.length;
-    if (!atEnd && !EXECUTABLE_SEGMENT_BOUNDARIES.has(value[index])) continue;
+    const boundary = atEnd
+      ? ""
+      : String.fromCodePoint(value.codePointAt(index)!);
+    if (!atEnd && !isExecutableSegmentBoundary(boundary)) {
+      index += boundary.length;
+      continue;
+    }
 
     const segment = value.slice(segmentStart, index);
     if (looksExecutable(segment, formulaProtectionMode)) {
       if (
         formulaProtectionMode === "excel-tab" &&
-        alreadyHasExcelTabPrefix(value, segmentStart)
+        alreadyHasLayeredExcelPrefix(value, segmentStart, segment)
       ) {
         output += segment;
       } else {
+        const prefix = formulaProtectionMode === "excel-tab"
+          ? (alreadyHasApostrophePrefix(segment) ? "\t" : "\t'")
+          : "'";
         output += `${prefix}${segment}`;
         protectedSegments += 1;
       }
@@ -264,8 +357,10 @@ function protectExecutableSegments(
       output += segment;
     }
 
-    if (!atEnd) output += value[index];
-    segmentStart = index + 1;
+    if (atEnd) break;
+    output += boundary;
+    index += boundary.length;
+    segmentStart = index;
   }
 
   return { value: output, protectedSegments };

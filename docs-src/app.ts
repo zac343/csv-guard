@@ -5,6 +5,7 @@ import {
   type CleanResult,
   type FormulaProtectionMode,
 } from "../app/lib/csv.ts";
+import { CsvFileDecodingError, decodeUtf8Csv } from "../app/lib/file-text.ts";
 import { createLatestOperation } from "../app/lib/latest-operation.ts";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -59,7 +60,7 @@ function selectedFormulaProtectionMode(): FormulaProtectionMode {
 
 function updateFormulaModeNote() {
   formulaModeNote.textContent = selectedFormulaProtectionMode() === "excel-tab"
-    ? "Adds a real tab before risky markers. The tab stays in exported data and can disrupt downstream imports. This may better survive Excel save/reopen. Negative numbers are also prefixed."
+    ? "Adds a real tab and an apostrophe before risky markers. Both stay in exported data and can disrupt downstream imports. The tab may better survive Excel save/reopen; test the exact lifecycle. Negative numbers are also prefixed."
     : "Adds an apostrophe before risky markers. The apostrophe stays in exported data, so downstream tools must accept or strip it. Excel may remove its escape behavior after save/reopen. Negative numbers are also prefixed.";
 }
 
@@ -137,7 +138,7 @@ function renderPreview(result: CleanResult) {
     `${formatted(headers.length)}/${formatted(result.table.headers.length)} columns. ` +
     `Detected ${result.inputDelimiterLabel} input. ` +
     (result.formulaProtectionMode === "excel-tab"
-      ? "Tab-prefix mode; tabs display as ⇥ in this preview."
+      ? "Tab + apostrophe mode; tabs display as ⇥ in this preview."
       : "Apostrophe-prefix mode.");
 }
 
@@ -145,7 +146,7 @@ function renderResult(result: CleanResult) {
   currentResult = result;
   outputHeading.textContent = `${formatted(result.stats.outputRows)} cleaned rows`;
   resultMode.textContent = result.formulaProtectionMode === "excel-tab"
-    ? "Tab-prefixed export"
+    ? "Tab + apostrophe-prefixed export"
     : "Apostrophe-prefixed export";
   setStat("formulas", result.stats.riskyPrefixesPrefixed);
   setStat("duplicates", result.stats.duplicatesRemoved);
@@ -212,13 +213,15 @@ async function readFile(file: File) {
   clearError();
   setStatus("Reading the file locally—no file content is being sent anywhere.");
   try {
-    const text = await file.text();
+    const text = decodeUtf8Csv(await file.arrayBuffer());
     if (!operations.isCurrent(operation)) return;
     sourceInput.value = text;
     await processText(text, file.name, operation);
-  } catch {
+  } catch (reason) {
     if (operations.isCurrent(operation)) {
-      showError("The browser could not read this file.");
+      showError(reason instanceof CsvFileDecodingError
+        ? reason.message
+        : "The browser could not read this file.");
       setBusy(false);
     }
   }
@@ -292,13 +295,15 @@ downloadButton.addEventListener("click", () => {
   const anchor = document.createElement("a");
   const baseName = currentFileName.replace(/\.csv$/i, "").replace(/[\\/:*?"<>|]+/g, "-") || "cleaned";
   anchor.href = url;
-  const suffix = currentResult.formulaProtectionMode === "excel-tab" ? "tab-prefixed" : "apostrophe-prefixed";
+  const suffix = currentResult.formulaProtectionMode === "excel-tab"
+    ? "tab-apostrophe-prefixed"
+    : "apostrophe-prefixed";
   anchor.download = `${baseName}.${suffix}.csv`;
   document.body.append(anchor);
   anchor.click();
   anchor.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
-  setStatus("Cleaned CSV downloaded. No file content was uploaded.");
+  setStatus("Download requested. Confirm the file in your browser. No file content was uploaded.");
 });
 
 updateFormulaModeNote();

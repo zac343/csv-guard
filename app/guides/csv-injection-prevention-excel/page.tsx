@@ -90,8 +90,10 @@ export default function CsvInjectionPreventionGuide() {
                 <strong>No CSV prefix is universally safe</strong> across spreadsheet
                 applications and downstream consumers. Apostrophe prefixing can reduce
                 risk on initial import but may not survive an Excel save/reopen cycle.
-                OWASP documents a tab-inside-a-quoted-field mitigation observed in Excel;
-                the real tab remains in the data and must be tested in your exact workflow.
+                OWASP documents a tab-inside-a-quoted-field mitigation observed in Excel.
+                CSV Guard layers an apostrophe after that tab so TSV-style reinterpretation
+                does not leave the formula marker first; both prefixes remain in the data and
+                must be tested in your exact workflow.
               </p>
             </div>
           </header>
@@ -120,9 +122,9 @@ export default function CsvInjectionPreventionGuide() {
                     <td>Testing the initial import and the saved file that users will reopen.</td>
                   </tr>
                   <tr>
-                    <th scope="row">Tab</th>
-                    <td>OWASP records an Excel-observed mitigation using a tab inside a quoted field.</td>
-                    <td>The real tab remains in the data and can disrupt parsers, joins, type inference, or another spreadsheet.</td>
+                    <th scope="row">Tab + apostrophe</th>
+                    <td>Layers an apostrophe after the Excel-observed tab mitigation so tab reinterpretation retains a text prefix.</td>
+                    <td>Both prefixes remain in the data and can disrupt parsers, joins, type inference, or another spreadsheet.</td>
                     <td>Testing the exact Excel version, locale, import path, and downstream program.</td>
                   </tr>
                 </tbody>

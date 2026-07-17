@@ -20,19 +20,22 @@ test("ships CSV Guard content and removes the disposable starter", async () => {
   assert.match(workbench, /Formula handling/);
   assert.match(workbench, /portable-apostrophe/);
   assert.match(workbench, /excel-tab/);
+  assert.match(workbench, /real tab and an apostrophe/i);
+  assert.match(workbench, /decodeUtf8Csv/);
+  assert.match(workbench, /file\.arrayBuffer\(\)/);
   assert.match(workbench, /serializeCleanCsv/);
   assert.match(workbench, /Apostrophe prefix \(default\)/);
   assert.match(workbench, /apostrophe stays in (?:the )?exported data/i);
   assert.match(workbench, /aria-describedby/);
   assert.match(workbench, /Formula-like segments changed/);
   assert.match(workbench, /apostrophe-prefixed/);
-  assert.match(workbench, /tab-prefixed/);
+  assert.match(workbench, /tab-apostrophe-prefixed/);
   assert.match(workbench, /replaceAll\("\\t", "⇥"\)/);
   assert.doesNotMatch(workbench, /\.guarded\.csv/);
   assert.doesNotMatch(`${page}${workbench}`, /Programmatic reuse/i);
   assert.match(
     workbench,
-    /const readFile[\s\S]+?const operation = operations\.begin\(\);[\s\S]+?setIsProcessing\(true\);[\s\S]+?await file\.text\(\)/,
+    /const readFile[\s\S]+?const operation = operations\.begin\(\);[\s\S]+?setIsProcessing\(true\);[\s\S]+?await file\.arrayBuffer\(\)/,
   );
   assert.match(workbench, /handleFormulaModeChange[\s\S]+?operations\.invalidate\(\)/);
   assert.match(layout, /CSV Guard — Private CSV cleaner/);

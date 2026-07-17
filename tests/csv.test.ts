@@ -16,12 +16,61 @@ test("detects common delimiters", () => {
   assert.equal(detectDelimiter("name\nAda"), "");
 });
 
+test("prefers a consistent delimiter over frequent text punctuation", () => {
+  const note = Array.from({ length: 13 }, (_, index) => `part${index}`).join(";");
+  const input = `name,note\nAda,${note}\nGrace,${note}`;
+
+  assert.equal(detectDelimiter(input), ",");
+  assert.deepEqual(parseCsv(input), {
+    delimiter: ",",
+    headers: ["name", "note"],
+    rows: [
+      ["Ada", note],
+      ["Grace", note],
+    ],
+  });
+
+  const shortText = Array.from({ length: 7 }, (_, index) => `head${index}`).join(";");
+  const unevenInput = `${shortText},note\n${note},one\n${note},two`;
+  assert.equal(detectDelimiter(unevenInput), ",");
+
+  const quotedInput = `name,note\nAda,"${note}"\nGrace,"${note}"`;
+  assert.equal(detectDelimiter(quotedInput), ",");
+  assert.deepEqual(parseCsv(quotedInput).rows, [
+    ["Ada", note],
+    ["Grace", note],
+  ]);
+
+  const raggedInput = "a,b\nx;y,1,2\nz;w,3,4,5";
+  assert.equal(detectDelimiter(raggedInput), ",");
+  assert.deepEqual(parseCsv(raggedInput), {
+    delimiter: ",",
+    headers: ["a", "b", "", ""],
+    rows: [
+      ["x;y", "1", "2", ""],
+      ["z;w", "3", "4", "5"],
+    ],
+  });
+});
+
 test("parses quoted delimiters, quotes, and newlines", () => {
   const table = parseCsv('name,notes\r\nAda,"one, two"\r\nGrace,"line 1\nline 2"\r\nLinus,"said ""hello"""');
   assert.deepEqual(table.headers, ["name", "notes"]);
   assert.equal(table.rows[0][1], "one, two");
   assert.equal(table.rows[1][1], "line 1\nline 2");
   assert.equal(table.rows[2][1], 'said "hello"');
+});
+
+test("preserves literal quotes inside unquoted fields", () => {
+  const paired = parseCsv('name,note\nAda,he said "hello"');
+  assert.equal(paired.rows[0][1], 'he said "hello"');
+
+  const single = parseCsv('name,note\nGrace,5" widget');
+  assert.equal(single.rows[0][1], '5" widget');
+
+  const quotedHeader = parseCsv('part"code,note\nA,B');
+  assert.deepEqual(quotedHeader.headers, ['part"code', "note"]);
+  assert.equal(quotedHeader.delimiter, ",");
 });
 
 test("cleans headers, duplicates, blanks, whitespace, and executable cells", () => {
@@ -87,6 +136,48 @@ test("protects formulas exposed by alternate-delimiter reinterpretation", () => 
       reinterpretedSegments.every((segment) => !/^[\p{White_Space}\p{Cc}\p{Cf}]*[=+\-@]/u.test(segment.normalize("NFKC"))),
       `alternate ${JSON.stringify(delimiter)} parsing must not expose a formula prefix`,
     );
+  }
+});
+
+test("protects formulas after compatibility-normalized delimiter boundaries", () => {
+  const compatibilityBoundaries = [
+    "\u037E",
+    "\uFE10",
+    "\uFE14",
+    "\uFE50",
+    "\uFE54",
+    "\uFF0C",
+    "\uFF1B",
+    "\uFF5C",
+    ...Array.from({ length: 10 }, (_, index) => String.fromCodePoint(0x1F101 + index)),
+  ];
+  const value = compatibilityBoundaries
+    .map((boundary) => `safe${boundary}=1+1`)
+    .join("");
+
+  for (const mode of ["portable-apostrophe", "excel-tab"] as const) {
+    const result = cleanCsv({
+      delimiter: ",",
+      headers: ["value"],
+      rows: [[value]],
+    }, mode);
+
+    assert.equal(result.stats.riskyPrefixesPrefixed, compatibilityBoundaries.length);
+    const prefix = mode === "excel-tab" ? "\t'" : "'";
+    for (const boundary of compatibilityBoundaries) {
+      assert.ok(result.table.rows[0][0].includes(`${boundary}${prefix}=1+1`));
+    }
+
+    const normalizedOutput = serializeCleanCsv(result).normalize("NFKC");
+    for (const delimiter of [",", ";", "\t", "|"]) {
+      assert.ok(
+        normalizedOutput.split(delimiter).every((segment) => {
+          const probe = segment.replace(/^["\p{White_Space}\p{Cc}\p{Cf}]+/u, "");
+          return !/^[=+\-@]/u.test(probe);
+        }),
+        `${mode}: NFKC then ${JSON.stringify(delimiter)} parsing must not expose a formula prefix`,
+      );
+    }
   }
 });
 
@@ -159,16 +250,47 @@ test("offers explicit portable and Excel-review prefix modes without double-pref
   assert.equal(excelReview.formulaProtectionMode, "excel-tab");
   assert.equal(excelReview.stats.riskyPrefixesPrefixed, 3);
   assert.deepEqual(excelReview.table.rows.map(([value]) => value), [
-    "\t=2+2",
-    "safe;\t=3+3",
-    "\t\u200B＝4+4",
+    "\t'=2+2",
+    "safe;\t'=3+3",
+    "\t'\u200B＝4+4",
   ]);
 
   const output = serializeCleanCsv(excelReview);
-  assert.match(output, /"\t=2\+2"/);
-  assert.match(output, /"safe;\t=3\+3"/);
-  assert.doesNotMatch(output, /\t\t=/);
+  assert.match(output, /"\t'=2\+2"/);
+  assert.match(output, /"safe;\t'=3\+3"/);
+  assert.doesNotMatch(output, /\t\t'=/);
   assert.deepEqual(parseCsv(output).rows, excelReview.table.rows);
+});
+
+test("keeps Excel-review formulas non-executable after tab reinterpretation", () => {
+  const rawBoundaries = [",", ";", "\t", "|", "\r", "\n"];
+  const source = {
+    delimiter: ",",
+    headers: ["value"],
+    rows: [
+      ["=1+1\ttail"],
+      ...rawBoundaries.map((boundary) => [`safe${boundary}\t=2+2`]),
+    ],
+  };
+  const result = cleanCsv(source, "excel-tab");
+
+  assert.equal(result.table.rows[0][0], "\t'=1+1\ttail");
+  rawBoundaries.forEach((boundary, index) => {
+    assert.equal(
+      result.table.rows[index + 1][0],
+      `safe${boundary}\t\t'=2+2`,
+    );
+  });
+  const output = serializeCleanCsv(result);
+  assert.ok(
+    output.split("\t").every((segment) => {
+      const probe = segment
+        .normalize("NFKC")
+        .replace(/^["\p{White_Space}\p{Cc}\p{Cf}]+/u, "");
+      return !/^[=+\-@]/u.test(probe);
+    }),
+  );
+  assert.equal(serializeCsv(source, "excel-tab"), output);
 });
 
 test("upgrades apostrophe-prefixed formulas when Excel-tab mode is selected", () => {
@@ -213,9 +335,9 @@ test("keeps Excel-tab cleanup and serialization idempotent across every boundary
   assert.deepEqual(second.table, first.table);
   assert.deepEqual(downloadedAndReparsed.table, first.table);
   assert.equal(serializeCsv(first.table, "excel-tab"), serializeCleanCsv(first));
-  assert.match(first.table.rows[0][0], /^\t=0/);
+  assert.match(first.table.rows[0][0], /^\t'=0/);
   for (const boundary of boundaries) {
-    const expectedPrefix = boundary === "\t" ? "\t\t" : `${boundary}\t`;
+    const expectedPrefix = boundary === "\t" ? "\t\t'" : `${boundary}\t'`;
     assert.ok(
       first.table.rows[0][0].includes(`${expectedPrefix}=1`),
       `${JSON.stringify(boundary)} must have exactly one Excel-tab prefix after its boundary`,

@@ -113,7 +113,7 @@
               <label for="formula-mode">Formula handling</label>
               <select id="formula-mode" aria-describedby="formula-mode-note">
                 <option value="portable-apostrophe">Apostrophe prefix (default)</option>
-                <option value="excel-tab">Excel review prefix (tab)</option>
+                <option value="excel-tab">Excel review prefix (tab + apostrophe)</option>
               </select>
               <p id="formula-mode-note">
                 Adds an apostrophe before risky markers. The apostrophe stays in data,
@@ -197,13 +197,13 @@
           <p class="risk-note">
             No universal CSV prefix strategy works across every spreadsheet and downstream
             consumer. Excel can remove apostrophe-based escaping after you save and reopen a
-            file; the tab mode leaves a real tab in the data. Re-clean untrusted exports before
-            reopening them. Both modes also prefix negative numbers such as <code>-42</code>,
+            file; the Excel review mode leaves a real tab and an apostrophe in the data. Re-clean
+            untrusted exports before reopening them. Both modes also prefix negative numbers such as <code>-42</code>,
             changing their inferred type. See the
             <a href="https://owasp.org/www-community/attacks/CSV_Injection" target="_blank" rel="noreferrer">OWASP CSV Injection guidance</a>.
           </p>
           <p>
-            <a class="text-link" href="./guides/csv-injection-prevention-excel/">Compare apostrophe and tab prefixes, then test your Excel workflow →</a>
+            <a class="text-link" href="./guides/csv-injection-prevention-excel/">Compare apostrophe and layered tab prefixes, then test your Excel workflow →</a>
           </p>
           <div class="mode-comparison" aria-labelledby="mode-comparison-title">
             <h3 id="mode-comparison-title">Choose by destination</h3>
@@ -212,7 +212,7 @@
               <thead><tr><th scope="col">Mode</th><th scope="col">Best fit</th><th scope="col">Known trade-off</th></tr></thead>
               <tbody>
                 <tr><td>Apostrophe prefix</td><td>Downstream accepts or strips apostrophe</td><td>Apostrophe stays in data; escape may not survive Excel save/reopen</td></tr>
-                <tr><td>Excel review tab</td><td>One-time human review in Excel</td><td>Tab stays in data and may disrupt imports</td></tr>
+                <tr><td>Excel review tab + apostrophe</td><td>One-time human review in Excel</td><td>Both prefixes stay in data and may disrupt imports</td></tr>
               </tbody>
             </table>
           </div>
@@ -274,7 +274,7 @@
           </details>
           <details>
             <summary>Will it change my original file?</summary>
-            <p>No. Your original remains untouched. CSV Guard downloads a separate <code>.apostrophe-prefixed.csv</code> or <code>.tab-prefixed.csv</code> copy.</p>
+            <p>No. Your original remains untouched. CSV Guard downloads a separate <code>.apostrophe-prefixed.csv</code> or <code>.tab-apostrophe-prefixed.csv</code> copy.</p>
           </details>
           <details>
             <summary>Is this a business-rule validation platform?</summary>

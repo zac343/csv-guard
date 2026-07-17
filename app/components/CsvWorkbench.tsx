@@ -17,6 +17,7 @@ import {
   type CleanResult,
   type FormulaProtectionMode,
 } from "../lib/csv";
+import { CsvFileDecodingError, decodeUtf8Csv } from "../lib/file-text";
 import { createLatestOperation } from "../lib/latest-operation";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
@@ -116,12 +117,14 @@ export function CsvWorkbench() {
     }
 
     try {
-      const text = await file.text();
+      const text = decodeUtf8Csv(await file.arrayBuffer());
       if (!operations.isCurrent(operation)) return;
       await processText(text, file.name, operation);
-    } catch {
+    } catch (reason) {
       if (operations.isCurrent(operation)) {
-        setError("The browser could not read this file.");
+        setError(reason instanceof CsvFileDecodingError
+          ? reason.message
+          : "The browser could not read this file.");
         setResult(null);
         setIsProcessing(false);
       }
@@ -191,7 +194,9 @@ export function CsvWorkbench() {
     const anchor = document.createElement("a");
     const baseName = fileName.replace(/\.csv$/i, "") || "cleaned";
     anchor.href = url;
-    const suffix = result.formulaProtectionMode === "excel-tab" ? "tab-prefixed" : "apostrophe-prefixed";
+    const suffix = result.formulaProtectionMode === "excel-tab"
+      ? "tab-apostrophe-prefixed"
+      : "apostrophe-prefixed";
     anchor.download = `${baseName}.${suffix}.csv`;
     document.body.appendChild(anchor);
     anchor.click();
@@ -284,11 +289,11 @@ export function CsvWorkbench() {
           aria-describedby={formulaModeNoteId}
         >
           <option value="portable-apostrophe">Apostrophe prefix (default)</option>
-          <option value="excel-tab">Excel review prefix (tab)</option>
+          <option value="excel-tab">Excel review prefix (tab + apostrophe)</option>
         </select>
         <p id={formulaModeNoteId}>
           {formulaProtectionMode === "excel-tab"
-            ? "Adds a real tab before risky markers. The tab stays in exported data and can disrupt downstream imports. This may better survive Excel save/reopen. Negative numbers are also prefixed."
+            ? "Adds a real tab and an apostrophe before risky markers. Both stay in exported data and can disrupt downstream imports. The tab may better survive Excel save/reopen; test the exact lifecycle. Negative numbers are also prefixed."
             : "Adds an apostrophe before risky markers. The apostrophe stays in exported data, so downstream tools must accept or strip it. Excel may remove its escape behavior after save/reopen. Negative numbers are also prefixed."}
         </p>
       </div>
@@ -315,7 +320,7 @@ export function CsvWorkbench() {
               <h3>{result.stats.outputRows.toLocaleString()} cleaned rows</h3>
               <p className="result-mode">
                 {result.formulaProtectionMode === "excel-tab"
-                  ? "Tab-prefixed export"
+                  ? "Tab + apostrophe-prefixed export"
                   : "Apostrophe-prefixed export"}
               </p>
             </div>
@@ -341,7 +346,7 @@ export function CsvWorkbench() {
             {Math.min(result.table.headers.length, 6)}/{result.table.headers.length} columns. Detected{" "}
             {result.inputDelimiterLabel} input.{" "}
             {result.formulaProtectionMode === "excel-tab"
-              ? "Tab-prefix mode; tabs display as ⇥ in this preview."
+              ? "Tab + apostrophe mode; tabs display as ⇥ in this preview."
               : "Apostrophe-prefix mode."}
           </p>
         </div>

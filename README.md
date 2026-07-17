@@ -15,11 +15,11 @@ Current checks:
 Formula handling is destination-specific:
 
 - **Apostrophe prefix (default)** adds an apostrophe that stays in exported data; downstream tools must accept or strip it. Excel may remove its formula-escape behavior after a save/reopen cycle.
-- **Excel review prefix (tab)** adds a real tab before risky markers. It may better survive that Excel cycle, but the tab remains in the data and can disrupt programmatic imports.
+- **Excel review prefix (tab + apostrophe)** adds both prefixes before risky markers. The tab may better survive that Excel cycle, while the apostrophe keeps a formula marker from becoming the first character if a downstream parser treats the tab as a delimiter. Both prefixes remain in the data and can disrupt programmatic imports.
 
 No universal CSV prefix strategy works across every spreadsheet and downstream consumer. Both modes also prefix negative numbers such as `-42`, changing their inferred type. These modes reduce formula-execution risk on initial import; they do not make an untrusted CSV permanently safe. Re-run the cleaner before reopening untrusted exports, and review the [OWASP CSV Injection guidance](https://owasp.org/www-community/attacks/CSV_Injection) for the lifecycle trade-offs.
 
-Files are limited to 10 MB, 100,000 data rows, 5,000 columns, 500,000 normalized cells, and 2,000,000 characters per field to bound parser work. Large inputs can still be memory-intensive, especially on mobile devices.
+File uploads must be valid UTF-8 and are rejected instead of being decoded with replacement characters. Files are limited to 10 MB, 100,000 data rows, 5,000 columns, 500,000 normalized cells, and 2,000,000 characters per field to bound parser work. Large inputs can still be memory-intensive, especially on mobile devices.
 
 The primary static app has no analytics endpoint and a content security policy that blocks background connections. A separate Sites/vinext edition stores only anonymous daily counts for page views, sample loads, analyses, and downloads. It does not store filenames or CSV contents. Those writes are rate-limited at the edge and capped in D1; client-originated counts remain directional, untrusted product signals—not authoritative order, revenue, billing, or security records.
 

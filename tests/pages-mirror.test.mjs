@@ -32,7 +32,7 @@ test("ships a crawlable, no-telemetry GitHub Pages application", async () => {
   assert.match(html, /id="formula-mode"/);
   assert.match(html, /aria-describedby="formula-mode-note"/);
   assert.match(html, /Apostrophe prefix \(default\)/);
-  assert.match(html, /Excel review prefix \(tab\)/);
+  assert.match(html, /Excel review prefix \(tab \+ apostrophe\)/);
   assert.match(html, /save and reopen/i);
   assert.match(html, /owasp\.org\/www-community\/attacks\/CSV_Injection/);
   assert.match(html, /class="mode-comparison"/);
@@ -42,7 +42,12 @@ test("ships a crawlable, no-telemetry GitHub Pages application", async () => {
   assert.doesNotMatch(html, /Programmatic reuse/i);
   assert.match(html, /Formula-like segments changed/);
   assert.match(source, /apostrophe-prefixed/);
-  assert.match(source, /tab-prefixed/);
+  assert.match(source, /tab-apostrophe-prefixed/);
+  assert.match(source, /real tab and an apostrophe/i);
+  assert.match(source, /decodeUtf8Csv/);
+  assert.match(source, /file\.arrayBuffer\(\)/);
+  assert.match(source, /Download requested/);
+  assert.doesNotMatch(source, /CSV downloaded/);
   assert.match(source, /replaceAll\("\\t", "⇥"\)/);
   assert.doesNotMatch(`${html}${source}`, /\.guarded\.csv/);
   assert.doesNotMatch(html, /Formulas protected|stay text|neutralize formula injection/i);

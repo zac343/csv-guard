@@ -47,7 +47,9 @@ test("keeps the guide lifecycle-bound, sourced, and accessible", async () => {
   assert.match(guide, /No CSV prefix is universally safe/i);
   assert.match(guide, /initial import/i);
   assert.match(guide, /save[^<]{0,80}close[^<]{0,80}reopen/i);
-  assert.match(guide, /real tab[^<]{0,100}(?:data|value)/i);
+  assert.match(guide, /Tab \+ apostrophe/i);
+  assert.match(guide, /TSV-style reinterpretation/i);
+  assert.match(guide, /both prefixes remain[^<]{0,100}(?:data|value)/i);
   assert.match(guide, /negative numbers/i);
   assert.match(guide, /Excel version/i);
   assert.match(guide, /locale/i);
@@ -80,6 +82,8 @@ test("serves the same guide from the dynamic fallback without claiming its host 
   assert.match(route, /url: GUIDE_URL/);
   assert.match(route, /CSV Injection Prevention in Excel: Apostrophe vs\. Tab Prefix/);
   assert.match(route, /No CSV prefix is universally safe/i);
+  assert.match(route, /Tab \+ apostrophe/i);
+  assert.match(route, /TSV-style reinterpretation/i);
   assert.match(route, /<caption[^>]*>Apostrophe and tab prefix trade-offs/i);
   assert.match(route, /<th scope="col">/);
   assert.match(route, /aria-current="page"/);

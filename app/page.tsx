@@ -156,8 +156,8 @@ export default function Home() {
           </p>
           <p className="lifecycle-note">
             Excel can remove apostrophe-based escaping after you save and reopen a file;
-            the tab mode leaves a real tab in the data. Re-clean untrusted exports before
-            reopening them. Both modes also prefix negative numbers such as -42, changing
+            the Excel review mode leaves a real tab and an apostrophe in the data. Re-clean
+            untrusted exports before reopening them. Both modes also prefix negative numbers such as -42, changing
             their inferred type. See the{" "}
             <a href="https://owasp.org/www-community/attacks/CSV_Injection" target="_blank" rel="noreferrer">
               OWASP CSV Injection guidance
@@ -165,7 +165,7 @@ export default function Home() {
           </p>
           <p>
             <a className="text-link" href={GUIDE_PATH}>
-              Compare apostrophe and tab prefixes, then test your Excel workflow →
+              Compare apostrophe and layered tab prefixes, then test your Excel workflow →
             </a>
           </p>
         </div>
@@ -175,7 +175,7 @@ export default function Home() {
             <thead><tr><th scope="col">Mode</th><th scope="col">Best fit</th><th scope="col">Known trade-off</th></tr></thead>
             <tbody>
               <tr><td>Apostrophe prefix</td><td>Downstream accepts or strips apostrophe</td><td>Apostrophe stays in data; escape may not survive Excel save/reopen</td></tr>
-              <tr><td>Excel review tab</td><td>One-time human review in Excel</td><td>Tab stays in data and may disrupt imports</td></tr>
+              <tr><td>Excel review tab + apostrophe</td><td>One-time human review in Excel</td><td>Both prefixes stay in data and may disrupt imports</td></tr>
             </tbody>
           </table>
         </div>

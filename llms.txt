@@ -2,7 +2,7 @@
 
 > CSV Guard is a free, privacy-first browser tool for deterministic CSV hygiene. It prefixes formula-like segments using a destination-specific mode, removes duplicate and empty rows, normalizes headers, trims cell edges, and downloads a separate CSV without uploading file contents.
 
-CSV Guard supports comma, semicolon, tab, pipe, and single-column input. The default apostrophe mode changes underlying values and requires downstream tools to accept or strip the apostrophe; its escape behavior may not survive an Excel save/reopen cycle. The Excel review mode adds a real tab that can disrupt downstream programmatic imports. No mode is universal or a permanent safety guarantee. The public static edition has no analytics endpoint or account system, and its browser policy blocks background network connections. It is a hygiene tool, not a business-rule or factual-data validator. Negative values that begin with a minus sign are conservatively prefixed and exported as text.
+CSV Guard supports valid UTF-8 comma, semicolon, tab, pipe, and single-column input. The default apostrophe mode changes underlying values and requires downstream tools to accept or strip the apostrophe; its escape behavior may not survive an Excel save/reopen cycle. The Excel review mode adds a real tab plus an apostrophe; both remain in the data and can disrupt downstream programmatic imports. No mode is universal or a permanent safety guarantee. The public static edition has no analytics endpoint or account system, and its browser policy blocks background network connections. It is a hygiene tool, not a business-rule or factual-data validator. Negative values that begin with a minus sign are conservatively prefixed and exported as text.
 
 ## Product
 
