@@ -1,18 +1,8 @@
 /** Cloudflare Worker entry point for CSV Guard. */
-import { handleImageOptimization, DEFAULT_DEVICE_SIZES, DEFAULT_IMAGE_SIZES } from "vinext/server/image-optimization";
 import handler from "vinext/server/app-router-entry";
 
 interface Env {
   ASSETS: Fetcher;
-  DB: D1Database;
-  METRICS_READ_TOKEN?: string;
-  IMAGES: {
-    input(stream: ReadableStream): {
-      transform(options: Record<string, unknown>): {
-        output(options: { format: string; quality: number }): Promise<{ response(): Response }>;
-      };
-    };
-  };
 }
 
 interface ExecutionContext {
@@ -32,20 +22,52 @@ function withSecurityHeaders(response: Response) {
   return secured;
 }
 
+function normalizeInternalPath(pathname: string) {
+  let decoded = pathname;
+
+  // Vinext decodes and normalizes internal paths before routing. Mirror that
+  // behavior here so encoded or repeated-slash aliases cannot reach a disabled
+  // internal endpoint. The bounded loop also covers common double encoding.
+  for (let pass = 0; pass < 4; pass += 1) {
+    try {
+      const next = decodeURIComponent(decoded);
+      if (next === decoded) break;
+      decoded = next;
+    } catch {
+      break;
+    }
+  }
+
+  const segments: string[] = [];
+  for (const segment of decoded.replaceAll("\\", "/").split("/")) {
+    if (!segment || segment === ".") continue;
+    if (segment === "..") {
+      segments.pop();
+      continue;
+    }
+    segments.push(segment);
+  }
+
+  return `/${segments.join("/")}`.replace(/\.rsc$/, "");
+}
+
+function isImageOptimizerPath(pathname: string) {
+  const normalized = normalizeInternalPath(pathname);
+  return normalized === "/_vinext/image" || normalized.startsWith("/_vinext/image/");
+}
+
 const worker = {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
 
-    if (url.pathname === "/_vinext/image") {
-      const allowedWidths = [...DEFAULT_DEVICE_SIZES, ...DEFAULT_IMAGE_SIZES];
-      const response = await handleImageOptimization(request, {
-        fetchAsset: (path) => env.ASSETS.fetch(new Request(new URL(path, request.url))),
-        transformImage: async (body, { width, format, quality }) => {
-          const result = await env.IMAGES.input(body).transform(width > 0 ? { width } : {}).output({ format, quality });
-          return result.response();
+    if (isImageOptimizerPath(url.pathname)) {
+      return withSecurityHeaders(new Response("Not found.", {
+        status: 404,
+        headers: {
+          "cache-control": "no-store",
+          "content-type": "text/plain; charset=utf-8",
         },
-      }, allowedWidths);
-      return withSecurityHeaders(response);
+      }));
     }
 
     return withSecurityHeaders(await handler.fetch(request, env, ctx));

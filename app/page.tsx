@@ -188,10 +188,10 @@ export default function Home() {
         </div>
         <div className="privacy-copy">
           <p>
-            Parsing, cleanup, preview, and export run in this browser tab. The
-            site records only anonymous daily action counts such as “analyze”
-            and “download”—never filenames, cell values, IP addresses, or file
-            contents in its product database.
+            Parsing, cleanup, preview, and export run in this browser tab. Both
+            public editions have no analytics endpoint. CSV Guard application
+            code sends and stores no product events, filenames, cell values, IP
+            addresses, or file contents.
           </p>
           <p>
             Need stronger assurance? Open developer tools, disconnect the

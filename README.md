@@ -21,7 +21,7 @@ No universal CSV prefix strategy works across every spreadsheet and downstream c
 
 File uploads must be valid UTF-8 and are rejected instead of being decoded with replacement characters. Files are limited to 10 MB, 100,000 data rows, 5,000 columns, 500,000 normalized cells, and 2,000,000 characters per field to bound parser work. Large inputs can still be memory-intensive, especially on mobile devices.
 
-The primary static app has no analytics endpoint and a content security policy that blocks background connections. A separate Sites/vinext edition stores only anonymous daily counts for page views, sample loads, analyses, and downloads. It does not store filenames or CSV contents. Those writes are rate-limited at the edge and capped in D1; client-originated counts remain directional, untrusted product signals—not authoritative order, revenue, billing, or security records.
+Both public editions have no analytics endpoint, and CSV Guard application code does not send or store product events, filenames, CSV contents, IP addresses, or interaction counts. The primary static app also uses a content security policy that blocks background connections. Hosting platforms may process ordinary HTTP request metadata under their own operational policies; CSV Guard exposes no application analytics database.
 
 ## Local development
 
@@ -42,4 +42,4 @@ Use the [structured issue forms](https://github.com/zac343/csv-guard/issues/new/
 
 ## Deployment
 
-The no-telemetry static edition is bundled into `docs/` for GitHub Pages with `npm run build:pages`. The project also targets the Sites/vinext Cloudflare Worker runtime. D1 migrations create the aggregate product-metrics table for that separate edition; the CSV itself remains in the browser. Reading aggregate metrics requires a server-side `METRICS_READ_TOKEN` secret.
+The no-telemetry static edition is bundled into `docs/` for GitHub Pages with `npm run build:pages`. The project also targets the Sites/vinext Cloudflare Worker runtime without a D1, R2, or Images binding. The unused vinext image-optimization path is explicitly rejected; direct static assets remain available.

@@ -4,7 +4,6 @@ import {
   type ChangeEvent,
   type DragEvent,
   useCallback,
-  useEffect,
   useId,
   useMemo,
   useState,
@@ -27,22 +26,6 @@ Grace Hopper,grace@example.com, Paid
 Grace Hopper,grace@example.com, Paid 
 ,,`;
 
-type EventName = "page_view" | "sample_loaded" | "analyze" | "download";
-
-async function trackEvent(event: EventName, signal?: AbortSignal) {
-  try {
-    await fetch("/api/events", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ event }),
-      keepalive: true,
-      signal,
-    });
-  } catch {
-    // Product telemetry must never interrupt local file processing.
-  }
-}
-
 export function CsvWorkbench() {
   const fileInputId = useId();
   const formulaModeNoteId = `${fileInputId}-formula-mode-note`;
@@ -55,12 +38,6 @@ export function CsvWorkbench() {
   const [formulaProtectionMode, setFormulaProtectionMode] =
     useState<FormulaProtectionMode>("portable-apostrophe");
   const [operations] = useState(createLatestOperation);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    void trackEvent("page_view", controller.signal);
-    return () => controller.abort();
-  }, []);
 
   const processText = useCallback(async (
     text: string,
@@ -86,7 +63,6 @@ export function CsvWorkbench() {
         setFileName(nextFileName);
         setResult(cleaned);
         setError(null);
-        void trackEvent("analyze");
       }
     } catch (reason) {
       if (operations.isCurrent(operation)) {
@@ -174,7 +150,6 @@ export function CsvWorkbench() {
     setFileName("sample-customers.csv");
     setResult(null);
     setError(null);
-    void trackEvent("sample_loaded");
   }, [operations]);
 
   const handleFormulaModeChange = useCallback((event: ChangeEvent<HTMLSelectElement>) => {
@@ -202,7 +177,6 @@ export function CsvWorkbench() {
     anchor.click();
     anchor.remove();
     URL.revokeObjectURL(url);
-    void trackEvent("download");
   }, [fileName, result]);
 
   const previewHeaders = useMemo(
