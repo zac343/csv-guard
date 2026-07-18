@@ -5,6 +5,7 @@ import test from "node:test";
 const root = new URL("../", import.meta.url);
 const siteUrl = "https://zac343.github.io/csv-guard/";
 const guideUrl = `${siteUrl}guides/csv-injection-prevention-excel/`;
+const checklistUrl = `${siteUrl}guides/csv-export-security-checklist/`;
 const dynamicHost = "csv-guard-zac343.coral-ibis-2405.chatgpt.site";
 
 test("publishes one crawlable guide with a single static canonical", async () => {
@@ -28,7 +29,7 @@ test("publishes one crawlable guide with a single static canonical", async () =>
   assert.match(home, /href="\.\/guides\/csv-injection-prevention-excel\/"[^>]*>Guide</);
 
   const locations = [...sitemap.matchAll(/<loc>([^<]+)<\/loc>/g)].map((match) => match[1]);
-  assert.deepEqual(locations, [siteUrl, guideUrl]);
+  assert.deepEqual(locations, [siteUrl, guideUrl, checklistUrl]);
   assert.doesNotMatch(sitemap, new RegExp(dynamicHost.replaceAll(".", "\\.")));
   assert.doesNotMatch(robots, /Disallow:\s*\/guides/i);
 });

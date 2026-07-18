@@ -6,12 +6,24 @@ export const DYNAMIC_SITE_URL =
 
 export const GUIDE_PATH = "/guides/csv-injection-prevention-excel/";
 
+export const CHECKLIST_PATH = "/guides/csv-export-security-checklist/";
+
 export const GUIDE_URL = new URL(
   "guides/csv-injection-prevention-excel/",
   SITE_URL,
 ).toString();
 
+export const CHECKLIST_URL = new URL(
+  "guides/csv-export-security-checklist/",
+  SITE_URL,
+).toString();
+
 export const SOCIAL_IMAGE_URL = new URL("og.png", SITE_URL).toString();
+
+export const CHECKLIST_SOCIAL_IMAGE_URL = new URL(
+  "og-checklist.png",
+  SITE_URL,
+).toString();
 
 export const SOURCE_URL = "https://github.com/zac343/csv-guard";
 
