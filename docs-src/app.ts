@@ -7,6 +7,7 @@ import {
 } from "../app/lib/csv.ts";
 import { CsvFileDecodingError, decodeUtf8Csv } from "../app/lib/file-text.ts";
 import { createLatestOperation } from "../app/lib/latest-operation.ts";
+import { createSecurityReviewReport } from "../app/lib/review-report.ts";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const PREVIEW_ROWS = 5;
@@ -33,6 +34,7 @@ const formulaModeSelect = requireElement<HTMLSelectElement>("#formula-mode");
 const formulaModeNote = requireElement<HTMLParagraphElement>("#formula-mode-note");
 const analyzeButton = requireElement<HTMLButtonElement>("#analyze-csv");
 const downloadButton = requireElement<HTMLButtonElement>("#download-csv");
+const reviewReportButton = requireElement<HTMLButtonElement>("#download-review-report");
 const resultsPanel = requireElement<HTMLElement>("#results");
 const errorMessage = requireElement<HTMLParagraphElement>("#error-message");
 const workbenchStatus = requireElement<HTMLParagraphElement>("#workbench-status");
@@ -72,6 +74,7 @@ function setBusy(busy: boolean) {
   sampleButton.disabled = busy;
   formulaModeSelect.disabled = busy;
   downloadButton.disabled = busy || !currentResult;
+  reviewReportButton.disabled = busy || !currentResult;
   dropZone.setAttribute("aria-busy", String(busy));
   dropZone.setAttribute("aria-disabled", String(busy));
   analyzeButton.textContent = busy ? "Inspecting…" : "Inspect CSV";
@@ -82,6 +85,7 @@ function clearResult() {
   resultsPanel.hidden = true;
   previewTable.replaceChildren();
   downloadButton.disabled = true;
+  reviewReportButton.disabled = true;
 }
 
 function clearError() {
@@ -157,6 +161,7 @@ function renderResult(result: CleanResult) {
   clearError();
   resultsPanel.hidden = false;
   downloadButton.disabled = false;
+  reviewReportButton.disabled = false;
   setStatus("Cleanup finished locally. Review the counts, then download when ready.");
 }
 
@@ -304,6 +309,22 @@ downloadButton.addEventListener("click", () => {
   anchor.remove();
   window.setTimeout(() => URL.revokeObjectURL(url), 0);
   setStatus("Download requested. Confirm the file in your browser. No file content was uploaded.");
+});
+
+reviewReportButton.addEventListener("click", () => {
+  if (!currentResult) return;
+  const blob = new Blob([createSecurityReviewReport(currentResult)], {
+    type: "text/markdown;charset=utf-8",
+  });
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement("a");
+  anchor.href = url;
+  anchor.download = "csv-guard.security-review.md";
+  document.body.append(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  setStatus("Review report requested. It contains aggregate counts only; review it before sharing.");
 });
 
 updateFormulaModeNote();

@@ -135,9 +135,14 @@
                   <h3 id="output-heading">0 cleaned rows</h3>
                   <p class="result-mode" id="result-mode">Apostrophe-prefixed export</p>
                 </div>
-                <button class="download-button" id="download-csv" type="button" disabled>
-                  Download cleaned CSV
-                </button>
+                <div class="result-actions">
+                  <button class="download-button" id="download-csv" type="button" disabled>
+                    Download cleaned CSV
+                  </button>
+                  <button class="review-report-button" id="download-review-report" type="button" disabled>
+                    Download review report
+                  </button>
+                </div>
               </div>
 
               <dl class="stats-grid">
@@ -147,6 +152,11 @@
                 <div><dt>Cells trimmed</dt><dd data-stat="trimmed">0</dd></div>
                 <div><dt>Headers normalized</dt><dd data-stat="headers">0</dd></div>
               </dl>
+
+              <p class="review-report-note">
+                The Markdown review report contains aggregate counts only—no file name,
+                headers, cells, or CSV content. Review it before sharing in a ticket or pull request.
+              </p>
 
               <div class="table-frame" tabindex="0" aria-label="Cleaned CSV preview">
                 <table id="preview-table"></table>

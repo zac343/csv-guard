@@ -23,6 +23,10 @@ test("ships CSV Guard content and removes the disposable starter", async () => {
   assert.match(workbench, /decodeUtf8Csv/);
   assert.match(workbench, /file\.arrayBuffer\(\)/);
   assert.match(workbench, /serializeCleanCsv/);
+  assert.match(workbench, /createSecurityReviewReport/);
+  assert.match(workbench, /Download review report/);
+  assert.match(workbench, /text\/markdown/);
+  assert.match(workbench, /\.security-review\.md/);
   assert.match(workbench, /Apostrophe prefix \(default\)/);
   assert.match(workbench, /apostrophe stays in (?:the )?exported data/i);
   assert.match(workbench, /aria-describedby/);

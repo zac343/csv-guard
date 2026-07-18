@@ -18,6 +18,7 @@ import {
 } from "../lib/csv";
 import { CsvFileDecodingError, decodeUtf8Csv } from "../lib/file-text";
 import { createLatestOperation } from "../lib/latest-operation";
+import { createSecurityReviewReport } from "../lib/review-report";
 
 const MAX_FILE_BYTES = 10 * 1024 * 1024;
 const SAMPLE_CSV = ` Customer Name ,Email,Invoice note
@@ -179,6 +180,21 @@ export function CsvWorkbench() {
     URL.revokeObjectURL(url);
   }, [fileName, result]);
 
+  const handleReviewReportDownload = useCallback(() => {
+    if (!result) return;
+    const blob = new Blob([createSecurityReviewReport(result)], {
+      type: "text/markdown;charset=utf-8",
+    });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = "csv-guard.security-review.md";
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.setTimeout(() => URL.revokeObjectURL(url), 0);
+  }, [result]);
+
   const previewHeaders = useMemo(
     () => result?.table.headers.slice(0, 6) ?? [],
     [result],
@@ -298,9 +314,18 @@ export function CsvWorkbench() {
                   : "Apostrophe-prefixed export"}
               </p>
             </div>
-            <button type="button" className="download-button" onClick={handleDownload}>
-              Download cleaned CSV
-            </button>
+            <div className="result-actions">
+              <button type="button" className="download-button" onClick={handleDownload}>
+                Download cleaned CSV
+              </button>
+              <button
+                type="button"
+                className="review-report-button"
+                onClick={handleReviewReportDownload}
+              >
+                Download review report
+              </button>
+            </div>
           </div>
           <dl className="stats-grid">
             <div><dt>Formula-like segments changed</dt><dd>{result.stats.riskyPrefixesPrefixed}</dd></div>
@@ -309,6 +334,10 @@ export function CsvWorkbench() {
             <div><dt>Cells trimmed</dt><dd>{result.stats.cellsTrimmed}</dd></div>
             <div><dt>Headers normalized</dt><dd>{result.stats.headersNormalized}</dd></div>
           </dl>
+          <p className="review-report-note">
+            The Markdown review report contains aggregate counts only—no file name, headers,
+            cells, or CSV content. Review it before sharing in a ticket or pull request.
+          </p>
           <div className="table-frame" tabIndex={0} aria-label="Cleaned CSV preview">
             <table>
               <thead><tr>{headerCells}</tr></thead>

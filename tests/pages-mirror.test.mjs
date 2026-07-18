@@ -41,6 +41,8 @@ test("ships a crawlable, no-telemetry GitHub Pages application", async () => {
   assert.match(html, /negative numbers/i);
   assert.doesNotMatch(html, /Programmatic reuse/i);
   assert.match(html, /Formula-like segments changed/);
+  assert.match(html, /id="download-review-report"/);
+  assert.match(html, /aggregate counts only/i);
   assert.match(source, /apostrophe-prefixed/);
   assert.match(source, /tab-apostrophe-prefixed/);
   assert.match(source, /real tab and an apostrophe/i);
@@ -56,6 +58,9 @@ test("ships a crawlable, no-telemetry GitHub Pages application", async () => {
   assert.match(source, /from "\.\.\/app\/lib\/csv\.ts"/);
   assert.match(source, /formulaProtectionMode/);
   assert.match(source, /serializeCleanCsv\(currentResult\)/);
+  assert.match(source, /createSecurityReviewReport\(currentResult\)/);
+  assert.match(source, /text\/markdown/);
+  assert.match(source, /\.security-review\.md/);
   assert.ok(bundle.length > 1_000, "expected a non-empty bundled application");
   assert.match(robots, /Sitemap: https:\/\/zac343\.github\.io\/csv-guard\/sitemap\.xml/);
   assert.match(sitemap, /<loc>https:\/\/zac343\.github\.io\/csv-guard\/<\/loc>/);
