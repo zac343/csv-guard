@@ -23,6 +23,10 @@ File uploads must be valid UTF-8 and are rejected instead of being decoded with 
 
 Both public editions have no analytics endpoint, and CSV Guard application code does not send or store product events, filenames, CSV contents, IP addresses, or interaction counts. The primary static app also uses a content security policy that blocks background connections. Hosting platforms may process ordinary HTTP request metadata under their own operational policies; CSV Guard exposes no application analytics database.
 
+## Related privacy-first tools
+
+- [Mail Domain Check](https://mail-domain-check-zac2.coral-ibis-2405.chatgpt.site/en/?utm_source=github&utm_medium=referral&utm_campaign=csv_guard_related_tools) checks public SPF, DKIM, DMARC, MX, PTR, MTA-STS, TLS-RPT, and CAA records without requesting mailbox content or provider credentials.
+
 ## Local development
 
 ```bash
